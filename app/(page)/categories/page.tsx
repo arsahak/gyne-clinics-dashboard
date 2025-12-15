@@ -1,6 +1,8 @@
 import { Category, getCategories } from "@/app/actions/category";
 import CategoryManagement from "@/component/categoryManagement/CategoryManagement";
 
+export const dynamic = 'force-dynamic';
+
 const CategoriesPage = async () => {
   const response = await getCategories(1, 20); // Default page 1, limit 20
 

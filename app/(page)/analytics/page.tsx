@@ -2,6 +2,8 @@ import { getCustomerStats } from "@/app/actions/customer";
 import { getOrderStats, getRecentOrders } from "@/app/actions/order";
 import AnalyticsManagement from "@/component/analytics/AnalyticsManagement";
 
+export const dynamic = 'force-dynamic';
+
 const AnalyticsPage = async () => {
   const [orderStatsRes, customerStatsRes, recentOrdersRes] = await Promise.all([
     getOrderStats(),

@@ -1,6 +1,8 @@
 import { getProducts, Product } from "@/app/actions/product";
 import ProductManagement from "@/component/productManagement/ProductManagement";
 
+export const dynamic = 'force-dynamic';
+
 const ProductsPage = async () => {
   const response = await getProducts(1, 20); // Default page 1, limit 20
 

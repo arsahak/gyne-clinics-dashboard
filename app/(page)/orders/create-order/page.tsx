@@ -2,6 +2,8 @@ import { Customer, getCustomers } from "@/app/actions/customer";
 import { getProducts, Product } from "@/app/actions/product";
 import OrderAdd from "@/component/orderManagement/OrderAdd";
 
+export const dynamic = 'force-dynamic';
+
 const CreateOrderPage = async () => {
   const [customersRes, productsRes] = await Promise.all([
     getCustomers(1, 100),

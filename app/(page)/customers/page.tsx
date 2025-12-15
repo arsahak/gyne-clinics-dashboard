@@ -1,6 +1,8 @@
 import { Customer, getCustomers } from "@/app/actions/customer";
 import CustomerManagement from "@/component/customerManagement/CustomerManagement";
 
+export const dynamic = 'force-dynamic';
+
 const CustomersPage = async () => {
   const response = await getCustomers(1, 20); // Default page 1, limit 20
 
