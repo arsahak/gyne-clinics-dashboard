@@ -26,12 +26,7 @@ const CategoryEdit = ({ category, categoriesList }: CategoryEditProps) => {
     setIsSubmitting(true);
     
     try {
-        const payload = {
-            ...data,
-            parent: data.parent === "" ? undefined : data.parent
-        };
-
-        const response = await updateCategory(category._id, payload);
+        const response = await updateCategory(category._id, data);
 
         if (response.success) {
             toast.success("Category updated successfully!");

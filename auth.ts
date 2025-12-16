@@ -9,6 +9,67 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
     strategy: "jwt",
     maxAge: THIRTY_DAYS_IN_SECONDS, // 30 days session expiry
   },
+  secret: process.env.AUTH_SECRET || "dashboard-secret-change-in-production",
+  trustHost: true,
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === "production" 
+        ? `__Secure-dashboard-authjs.session-token`
+        : `dashboard-authjs.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+    callbackUrl: {
+      name: process.env.NODE_ENV === "production"
+        ? `__Secure-dashboard-authjs.callback-url`
+        : `dashboard-authjs.callback-url`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+    csrfToken: {
+      name: process.env.NODE_ENV === "production"
+        ? `__Host-dashboard-authjs.csrf-token`
+        : `dashboard-authjs.csrf-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+    pkceCodeVerifier: {
+      name: process.env.NODE_ENV === "production"
+        ? `__Secure-dashboard-authjs.pkce.code_verifier`
+        : `dashboard-authjs.pkce.code_verifier`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 60 * 15, // 15 minutes
+      },
+    },
+    state: {
+      name: process.env.NODE_ENV === "production"
+        ? `__Secure-dashboard-authjs.state`
+        : `dashboard-authjs.state`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 60 * 15, // 15 minutes
+      },
+    },
+  },
   pages: {
     signIn: "/sign-in",
     error: "/sign-in",

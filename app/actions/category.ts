@@ -150,10 +150,19 @@ export async function createCategory(
   try {
     const headers = await getAuthHeaders();
 
+    // Convert null/empty string parent to empty string for backend to handle
+    // Backend converts empty string to null
+    const payload = {
+      ...categoryData,
+      parent: !categoryData.parent || categoryData.parent === "" || categoryData.parent === null 
+        ? "" 
+        : categoryData.parent,
+    };
+
     const response = await fetch(`${API_URL}/api/categories`, {
       method: "POST",
       headers,
-      body: JSON.stringify(categoryData),
+      body: JSON.stringify(payload),
     });
 
     const data = await parseResponse(response);
@@ -187,10 +196,19 @@ export async function updateCategory(
   try {
     const headers = await getAuthHeaders();
 
+    // Convert null/empty string parent to empty string for backend to handle
+    // Backend converts empty string to null
+    const payload = {
+      ...categoryData,
+      parent: !categoryData.parent || categoryData.parent === "" || categoryData.parent === null 
+        ? "" 
+        : categoryData.parent,
+    };
+
     const response = await fetch(`${API_URL}/api/categories/${id}`, {
       method: "PUT",
       headers,
-      body: JSON.stringify(categoryData),
+      body: JSON.stringify(payload),
     });
 
     const data = await parseResponse(response);
@@ -244,6 +262,39 @@ export async function deleteCategory(id: string): Promise<CategoryResponse> {
     return {
       success: false,
       error: error.message || "An error occurred while deleting category",
+    };
+  }
+}
+
+// Get category tree (hierarchical structure)
+export async function getCategoryTree(): Promise<CategoryResponse> {
+  try {
+    const headers = await getAuthHeaders();
+
+    const response = await fetch(`${API_URL}/api/categories/tree`, {
+      method: "GET",
+      headers,
+      cache: "no-store",
+    });
+
+    const data = await parseResponse(response);
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data.message || "Failed to fetch category tree",
+      };
+    }
+
+    return {
+      success: true,
+      data: data.data,
+    };
+  } catch (error: any) {
+    console.error("Get category tree error:", error);
+    return {
+      success: false,
+      error: error.message || "An error occurred while fetching category tree",
     };
   }
 }

@@ -17,13 +17,7 @@ const CategoryAdd = ({ categoriesList }: CategoryAddProps) => {
     setIsSubmitting(true);
     
     try {
-        // Only send parent if it's not empty string
-        const payload = {
-            ...data,
-            parent: data.parent === "" ? undefined : data.parent
-        };
-
-        const response = await createCategory(payload);
+        const response = await createCategory(data);
 
         if (response.success) {
             toast.success("Category created successfully!");
