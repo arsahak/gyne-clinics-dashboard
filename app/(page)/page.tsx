@@ -39,7 +39,8 @@ const page = async () => {
     salesData: [],
   };
 
-  const dashboardData = response.success && response.data ? response.data : defaultData;
+  const dashboardData =
+    response.success && response.data ? response.data : defaultData;
 
   return (
     <div>

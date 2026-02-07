@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import "../globals.css";
 
 export const metadata: Metadata = {
-  title: "Coaching Center",
-  description: "Coaching Center Management System",
+  title: "Gyneclinics",
+  description: "Gyneclinics Management System",
 };
 
 export default function PageLayout({

@@ -19,6 +19,7 @@ import {
   FaShoppingCart,
   FaTags,
   FaUsers,
+  FaRobot,
 } from "react-icons/fa";
 import { IoIosArrowDown, IoMdHome, IoMdMoon, IoMdSunny } from "react-icons/io";
 import { MdInventory, MdSettings } from "react-icons/md";
@@ -73,6 +74,18 @@ const getMenuItems = (language: string): MenuItem[] => [
     icon: <FaClipboardList className="w-5 h-5" />,
     label: "Reviews",
     path: "/reviews",
+  },
+  {
+    icon: <FaRobot className="w-5 h-5" />,
+    label: "AI Chatbot",
+    path: "/ai-chatbot",
+    expandable: true,
+    // badge: "NEW",
+    subItems: [
+      { label: "Train AI", path: "/ai-chatbot/knowledge-base" },
+      { label: "Conversations", path: "/ai-chatbot/conversations" },
+      { label: "Statistics", path: "/ai-chatbot/stats" },
+    ],
   },
   {
     icon: <MdSettings className="w-5 h-5" />,
