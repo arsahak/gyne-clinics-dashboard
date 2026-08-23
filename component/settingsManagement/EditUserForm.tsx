@@ -101,7 +101,7 @@ const EditUserForm = () => {
     name: "",
     email: "",
     password: "",
-    role: "teacher",
+    role: "staff",
     avatar: "",
   });
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
@@ -443,9 +443,8 @@ const EditUserForm = () => {
                           : "bg-gray-50 border-gray-300 text-gray-900"
                       }`}
                     >
-                      <option value="teacher">Teacher</option>
-                      <option value="student">Student</option>
-                      <option value="admin">Admin</option>
+                      <option value="staff">Staff (Sub User)</option>
+                      <option value="admin">Admin (Super User)</option>
                     </select>
                   </div>
 
@@ -644,9 +643,7 @@ const EditUserForm = () => {
                       className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
                         formData.role === "admin"
                           ? "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300"
-                          : formData.role === "teacher"
-                          ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
-                          : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                          : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
                       }`}
                     >
                       {formData.role}

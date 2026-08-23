@@ -13,11 +13,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
+  FaAd,
+  FaBookOpen,
   FaBoxOpen,
   FaChartLine,
+  FaClipboardCheck,
   FaClipboardList,
+  FaFileAlt,
   FaShoppingCart,
+  FaStethoscope,
   FaTags,
+  FaUserShield,
   FaUsers,
   FaRobot,
 } from "react-icons/fa";
@@ -41,39 +47,69 @@ const getMenuItems = (language: string): MenuItem[] => [
     path: "/",
   },
   {
-    icon: <FaShoppingCart className="w-5 h-5" />,
-    label: "Orders",
-    path: "/orders",
+    icon: <FaUserShield className="w-5 h-5" />,
+    label: "User Management",
+    path: "/user-management",
+  },
+  // {
+  //   icon: <FaShoppingCart className="w-5 h-5" />,
+  //   label: "Orders",
+  //   path: "/orders",
+  // },
+  // {
+  //   icon: <FaBoxOpen className="w-5 h-5" />,
+  //   label: "Products",
+  //   path: "/products",
+  // },
+  // {
+  //   icon: <FaTags className="w-5 h-5" />,
+  //   label: "Categories",
+  //   path: "/categories",
+  // },
+  // {
+  //   icon: <MdInventory className="w-5 h-5" />,
+  //   label: "Inventory",
+  //   path: "/inventory",
+  // },
+  // {
+  //   icon: <FaUsers className="w-5 h-5" />,
+  //   label: "Customers",
+  //   path: "/customers",
+  // },
+  // {
+  //   icon: <FaChartLine className="w-5 h-5" />,
+  //   label: "Analytics",
+  //   path: "/analytics",
+  // },
+  // {
+  //   icon: <FaClipboardList className="w-5 h-5" />,
+  //   label: "Reviews",
+  //   path: "/reviews",
+  // },
+  {
+    icon: <FaFileAlt className="w-5 h-5" />,
+    label: "Content",
+    path: "/content",
   },
   {
-    icon: <FaBoxOpen className="w-5 h-5" />,
-    label: "Products",
-    path: "/products",
+    icon: <FaBookOpen className="w-5 h-5" />,
+    label: "Stories",
+    path: "/stories",
   },
   {
-    icon: <FaTags className="w-5 h-5" />,
-    label: "Categories",
-    path: "/categories",
-  },
-  {
-    icon: <MdInventory className="w-5 h-5" />,
-    label: "Inventory",
-    path: "/inventory",
-  },
-  {
-    icon: <FaUsers className="w-5 h-5" />,
-    label: "Customers",
-    path: "/customers",
-  },
-  {
-    icon: <FaChartLine className="w-5 h-5" />,
-    label: "Analytics",
-    path: "/analytics",
-  },
-  {
-    icon: <FaClipboardList className="w-5 h-5" />,
-    label: "Reviews",
-    path: "/reviews",
+    icon: <FaStethoscope className="w-5 h-5" />,
+    label: "Doctor Discovery",
+    path: "/doctors",
+    expandable: true,
+    subItems: [
+      { label: "Doctors", path: "/doctors" },
+      { label: "Doctor Reviews", path: "/doctor-reviews" },
+      { label: "Chat Moderation", path: "/chat-moderation" },
+      { label: "Chat Monitoring", path: "/chat-monitoring" },
+      { label: "Reports", path: "/reports" },
+      { label: "Notifications", path: "/notifications" },
+      { label: "Analytics", path: "/doctor-analytics" },
+    ],
   },
   {
     icon: <FaRobot className="w-5 h-5" />,
@@ -86,6 +122,16 @@ const getMenuItems = (language: string): MenuItem[] => [
       { label: "Conversations", path: "/ai-chatbot/conversations" },
       { label: "Statistics", path: "/ai-chatbot/stats" },
     ],
+  },
+  {
+    icon: <FaAd className="w-5 h-5" />,
+    label: "Advertisements",
+    path: "/advertisements",
+  },
+  {
+    icon: <FaClipboardCheck className="w-5 h-5" />,
+    label: "Audit Logs",
+    path: "/audit-logs",
   },
   {
     icon: <MdSettings className="w-5 h-5" />,

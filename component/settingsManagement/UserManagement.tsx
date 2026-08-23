@@ -114,7 +114,9 @@ const UserManagement = () => {
         const usersData = Array.isArray(result.data)
           ? result.data
           : [result.data];
-        setUsers(usersData);
+        // This panel is for staff accounts only — doctors and patients are
+        // managed on their own dedicated pages (Doctors, User Management).
+        setUsers(usersData.filter((u) => u.role === "admin" || u.role === "staff"));
       } else {
         toast.error(result.error || "Failed to fetch users");
       }
@@ -350,9 +352,7 @@ const UserManagement = () => {
                         className={`px-3 py-1 rounded-full text-xs font-semibold ${
                           user.role === "admin"
                             ? "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300"
-                            : user.role === "teacher"
-                            ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
-                            : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                            : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
                         }`}
                       >
                         {user.role}
