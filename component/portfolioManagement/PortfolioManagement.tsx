@@ -246,7 +246,7 @@ const PortfolioManagement = () => {
   }
 
   return (
-    <div className="p-6">
+    <div>
       <button
         onClick={() => router.back()}
         className={`flex items-center gap-2 mb-4 ${

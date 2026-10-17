@@ -1,34 +1,22 @@
 "use client";
 
-export interface PortfolioData {
-  appTitle?: string;
-  appLogo?: string;
-  appDescription?: string;
-}
 import { useLanguage } from "@/lib/LanguageContext";
 import { useSidebar } from "@/lib/SidebarContext";
 import { getTranslation } from "@/lib/translations";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   FaAd,
   FaBookOpen,
-  FaBoxOpen,
-  FaChartLine,
-  FaClipboardCheck,
-  FaClipboardList,
   FaFileAlt,
-  FaShoppingCart,
-  FaStethoscope,
-  FaTags,
-  FaUserShield,
-  FaUsers,
   FaRobot,
+  FaStethoscope,
+  FaUserShield,
 } from "react-icons/fa";
 import { IoIosArrowDown, IoMdHome, IoMdMoon, IoMdSunny } from "react-icons/io";
-import { MdInventory, MdSettings } from "react-icons/md";
+import { MdSettings, MdVideocam } from "react-icons/md";
 import { RxDoubleArrowLeft } from "react-icons/rx";
 
 interface MenuItem {
@@ -48,8 +36,23 @@ const getMenuItems = (language: string): MenuItem[] => [
   },
   {
     icon: <FaUserShield className="w-5 h-5" />,
-    label: "User Management",
-    path: "/user-management",
+    label: "Patient",
+    path: "/patient",
+  },
+  {
+    icon: <FaStethoscope className="w-5 h-5" />,
+    label: "Doctor Discovery",
+    path: "/doctors",
+    expandable: true,
+    subItems: [
+      { label: "Doctors", path: "/doctors" },
+      { label: "Doctor Reviews", path: "/doctor-reviews" },
+      { label: "Chat Moderation", path: "/chat-moderation" },
+      { label: "Chat Monitoring", path: "/chat-monitoring" },
+      { label: "Reports", path: "/reports" },
+      { label: "Notifications", path: "/notifications" },
+      { label: "Analytics", path: "/doctor-analytics" },
+    ],
   },
   // {
   //   icon: <FaShoppingCart className="w-5 h-5" />,
@@ -96,21 +99,7 @@ const getMenuItems = (language: string): MenuItem[] => [
     label: "Stories",
     path: "/stories",
   },
-  {
-    icon: <FaStethoscope className="w-5 h-5" />,
-    label: "Doctor Discovery",
-    path: "/doctors",
-    expandable: true,
-    subItems: [
-      { label: "Doctors", path: "/doctors" },
-      { label: "Doctor Reviews", path: "/doctor-reviews" },
-      { label: "Chat Moderation", path: "/chat-moderation" },
-      { label: "Chat Monitoring", path: "/chat-monitoring" },
-      { label: "Reports", path: "/reports" },
-      { label: "Notifications", path: "/notifications" },
-      { label: "Analytics", path: "/doctor-analytics" },
-    ],
-  },
+
   {
     icon: <FaRobot className="w-5 h-5" />,
     label: "AI Chatbot",
@@ -128,10 +117,15 @@ const getMenuItems = (language: string): MenuItem[] => [
     label: "Advertisements",
     path: "/advertisements",
   },
+  // {
+  //   icon: <FaClipboardCheck className="w-5 h-5" />,
+  //   label: "Audit Logs",
+  //   path: "/audit-logs",
+  // },
   {
-    icon: <FaClipboardCheck className="w-5 h-5" />,
-    label: "Audit Logs",
-    path: "/audit-logs",
+    icon: <MdVideocam className="w-5 h-5" />,
+    label: "Consultation Settings",
+    path: "/consultation-settings",
   },
   {
     icon: <MdSettings className="w-5 h-5" />,
@@ -148,31 +142,6 @@ export default function Sidebar() {
   const [expandedSections, setExpandedSections] = useState<
     Record<string, boolean>
   >({});
-  const [portfolio, setPortfolio] = useState<PortfolioData>({
-    appTitle: "Gyne Clinics",
-    appLogo: "",
-  });
-  const [isLoadingPortfolio, setIsLoadingPortfolio] = useState(true);
-
-  // Fetch portfolio data
-  useEffect(() => {
-    const fetchPortfolio = async () => {
-      try {
-        const response = await fetch("/api/portfolio");
-        const result = await response.json();
-        if (result.success && result.data) {
-          setPortfolio(result.data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch portfolio:", error);
-      } finally {
-        setIsLoadingPortfolio(false);
-      }
-    };
-
-    fetchPortfolio();
-  }, []);
-
   const toggleSection = (label: string) => {
     setExpandedSections((prev) => ({
       ...prev,
@@ -181,11 +150,6 @@ export default function Sidebar() {
   };
 
   const menuItems = getMenuItems(language);
-
-  // Get first letter of app title for logo fallback
-  const getLogoLetter = () => {
-    return portfolio.appTitle?.charAt(0).toUpperCase() || "S";
-  };
 
   return (
     <div className="relative">
@@ -198,46 +162,28 @@ export default function Sidebar() {
             : "bg-white text-gray-800 border-r border-gray-200"
         }`}
       >
-        {/* Logo */}
+        {/* Logo — full wordmark when open, brand "G" mark when collapsed */}
         <div
-          className={`p-4 pb-5 mt-2 transition-colors duration-200 ${
+          className={`h-16 flex items-center justify-center px-4 shrink-0 transition-colors duration-200 ${
             isDarkMode ? "border-b border-gray-700" : "border-b border-gray-200"
           }`}
         >
-          <div className="flex items-center justify-center gap-3">
-            <div
-              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors duration-200 overflow-hidden ${
-                isDarkMode ? "bg-blue-600" : "bg-gray-800"
-              }`}
-            >
-              {!isLoadingPortfolio && portfolio.appLogo ? (
-                <Image
-                  src={portfolio.appLogo}
-                  alt={portfolio.appTitle || "Logo"}
-                  width={32}
-                  height={32}
-                  className="object-cover"
-                />
-              ) : (
-                <span className="text-white font-bold text-lg">
-                  {getLogoLetter()}
-                </span>
-              )}
-            </div>
-            {isOpen && (
-              <div>
-                <h1
-                  className={`text-lg font-semibold transition-colors duration-200 ${
-                    isDarkMode ? "text-gray-100" : "text-gray-800"
-                  }`}
-                >
-                  {isLoadingPortfolio
-                    ? "Loading..."
-                    : portfolio.appTitle || "Gyne Clinics"}
-                </h1>
-              </div>
+          <Link href="/" aria-label="Gyneclinics dashboard home">
+            {isOpen ? (
+              <Image
+                src="/assets/logo/gyneclinics-logo.webp"
+                alt="Gyneclinics"
+                width={150}
+                height={51}
+                priority
+                className="h-auto w-[150px]"
+              />
+            ) : (
+              <span className="w-9 h-9 rounded-xl flex items-center justify-center bg-gradient-to-br from-brand-secondary to-brand-accent text-white font-bold text-lg shadow-sm">
+                G
+              </span>
             )}
-          </div>
+          </Link>
         </div>
 
         {/* Navigation */}
@@ -257,8 +203,8 @@ export default function Sidebar() {
                           ? "bg-blue-900 text-blue-300"
                           : "bg-blue-50 text-blue-600"
                         : isDarkMode
-                        ? "text-gray-300 hover:bg-gray-800"
-                        : "text-gray-700 hover:bg-gray-50"
+                          ? "text-gray-300 hover:bg-gray-800"
+                          : "text-gray-700 hover:bg-gray-50"
                     }`}
                   >
                     <span
@@ -314,8 +260,8 @@ export default function Sidebar() {
                               ? "text-blue-300 bg-blue-900"
                               : "text-blue-600 bg-blue-50"
                             : isDarkMode
-                            ? "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
-                            : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                              ? "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
+                              : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                         }`}
                       >
                         {subItem.label}
@@ -353,15 +299,6 @@ export default function Sidebar() {
                   ? getTranslation("lightMode", language)
                   : getTranslation("darkMode", language)}
               </span>
-              <span
-                className={`text-xs px-2 py-1 rounded-full transition-colors duration-200 ${
-                  isDarkMode
-                    ? "bg-gray-700 text-gray-300"
-                    : "bg-gray-100 text-gray-600"
-                }`}
-              >
-                {language === "en" ? "EN" : "বাংলা"}
-              </span>
             </button>
           ) : (
             <div className="flex flex-col items-center gap-2">
@@ -379,15 +316,6 @@ export default function Sidebar() {
                   <IoMdMoon className="w-5 h-5" />
                 )}
               </button>
-              <span
-                className={`text-xs px-2 py-1 rounded-full transition-colors duration-200 ${
-                  isDarkMode
-                    ? "bg-gray-700 text-gray-300"
-                    : "bg-gray-100 text-gray-600"
-                }`}
-              >
-                {language === "en" ? "EN" : "বাংলা"}
-              </span>
             </div>
           )}
         </div>

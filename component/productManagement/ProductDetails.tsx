@@ -14,7 +14,7 @@ const ProductDetails = ({ product }: ProductDetailsProps) => {
 
   if (!product) {
     return (
-        <div className={`min-h-screen p-6 ${isDarkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"}`}>
+        <div className={`${isDarkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"}`}>
             <div className="text-center py-10">
                 <h2 className="text-2xl font-bold mb-4">Product Not Found</h2>
                 <button
@@ -39,7 +39,7 @@ const ProductDetails = ({ product }: ProductDetailsProps) => {
 
   return (
     <div
-      className={`min-h-screen p-6 ${
+      className={`${
         isDarkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"
       }`}
     >

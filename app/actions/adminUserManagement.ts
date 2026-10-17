@@ -18,6 +18,52 @@ export interface UserRecord {
   createdAt?: string;
 }
 
+export type PregnancyStatus = "not_pregnant" | "pregnant" | "postpartum" | "trying_to_conceive";
+
+export interface PatientProfile {
+  _id: string;
+  age?: number;
+  heightCm?: number;
+  weightKg?: number;
+  menstrualHistory?: {
+    lastPeriodDate?: string;
+    cycleLengthDays?: number;
+    periodLengthDays?: number;
+  };
+  pregnancyStatus?: PregnancyStatus;
+  profileCompleted: boolean;
+  remindersEnabled: boolean;
+}
+
+export interface PatientRecord extends UserRecord {
+  avatar?: string;
+  profile: PatientProfile | null;
+}
+
+export type PatientSort = "newest" | "oldest" | "name_asc" | "name_desc";
+
+export interface PatientPagination {
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+}
+
+export interface PatientStats {
+  total: number;
+  active: number;
+  blocked: number;
+  pregnant: number;
+}
+
+export interface PatientListResponse {
+  success: boolean;
+  data?: PatientRecord[];
+  pagination?: PatientPagination;
+  stats?: PatientStats;
+  error?: string;
+}
+
 export interface UserManagementResponse {
   success: boolean;
   message?: string;
@@ -65,6 +111,35 @@ export async function getUsers(role?: UserRole | "all", search?: string): Promis
     return { success: true, data: data.data };
   } catch (error: any) {
     return { success: false, error: error.message || "An error occurred while fetching users" };
+  }
+}
+
+export async function getPatients(
+  status: "all" | "active" | "suspended" = "all",
+  search?: string,
+  page: number = 1,
+  limit: number = 10,
+  sort: PatientSort = "newest",
+): Promise<PatientListResponse> {
+  try {
+    const headers = await getAuthHeaders();
+    const params = new URLSearchParams({ page: String(page), limit: String(limit), sort });
+    if (status !== "all") params.set("suspended", String(status === "suspended"));
+    if (search) params.set("search", search);
+
+    const response = await fetch(`${API_URL}/api/admin/users/patients?${params}`, {
+      method: "GET",
+      headers,
+      cache: "no-store",
+    });
+    const data = await parseResponse(response);
+    if (!response.ok) return { success: false, error: data.message || "Failed to fetch patients" };
+    return { success: true, data: data.data, pagination: data.pagination, stats: data.stats };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "An error occurred while fetching patients",
+    };
   }
 }
 

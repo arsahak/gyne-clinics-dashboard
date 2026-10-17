@@ -5,27 +5,60 @@ import { useSidebar } from "@/lib/SidebarContext";
 import { getTranslation } from "@/lib/translations";
 import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
 import {
   IoMdArrowDown,
   IoMdLogOut,
   IoMdMenu,
-  IoMdNotifications,
   IoMdPerson,
-  IoMdSearch,
   IoMdSettings,
 } from "react-icons/io";
+import DoctorAlertBell from "./DoctorAlertBell";
+
+// Ordered longest-path-first so nested routes (e.g. /ai-chatbot/stats) match
+// before their parent (/ai-chatbot).
+const PAGE_TITLES: { path: string; title: string }[] = [
+  { path: "/ai-chatbot/knowledge-base", title: "Train AI" },
+  { path: "/ai-chatbot/conversations", title: "Conversations" },
+  { path: "/ai-chatbot/stats", title: "Statistics" },
+  { path: "/ai-chatbot", title: "AI Chatbot" },
+  { path: "/patient", title: "Patients" },
+  { path: "/doctor-reviews", title: "Doctor Reviews" },
+  { path: "/doctor-analytics", title: "Doctor Analytics" },
+  { path: "/chat-moderation", title: "Chat Moderation" },
+  { path: "/chat-monitoring", title: "Chat Monitoring" },
+  { path: "/consultation-settings", title: "Consultation Settings" },
+  { path: "/audit-logs", title: "Audit Logs" },
+  { path: "/advertisements", title: "Advertisements" },
+  { path: "/notifications", title: "Notifications" },
+  { path: "/customers", title: "Customers" },
+  { path: "/doctors", title: "Doctor Discovery" },
+  { path: "/reports", title: "Reports" },
+  { path: "/content", title: "Content" },
+  { path: "/stories", title: "Stories" },
+  { path: "/settings", title: "Settings" },
+  { path: "/profile", title: "Profile" },
+  { path: "/", title: "Dashboard" },
+];
+
+function getPageTitle(pathname: string): string {
+  const match = PAGE_TITLES.find(
+    ({ path }) => pathname === path || pathname.startsWith(`${path}/`)
+  );
+  return match?.title || "Dashboard";
+}
 
 export default function Topbar() {
   const { isOpen, isMobile, isDarkMode } = useSidebar();
-  const { language, setLanguage } = useLanguage();
+  const { language } = useLanguage();
   const { data: session } = useSession();
   const user = session?.user;
   const router = useRouter();
+  const pathname = usePathname();
+  const pageTitle = getPageTitle(pathname);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [showLanguageMenu, setShowLanguageMenu] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Get user initials for avatar
@@ -42,23 +75,19 @@ export default function Topbar() {
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      // Check if click is outside both dropdowns
       if (showProfileMenu && !target.closest("[data-profile-dropdown]")) {
         setShowProfileMenu(false);
       }
-      if (showLanguageMenu && !target.closest("[data-language-dropdown]")) {
-        setShowLanguageMenu(false);
-      }
     };
 
-    if (showProfileMenu || showLanguageMenu) {
+    if (showProfileMenu) {
       document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showProfileMenu, showLanguageMenu]);
+  }, [showProfileMenu]);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -73,21 +102,9 @@ export default function Topbar() {
     }
   };
 
-  const handleLanguageChange = (newLanguage: string) => {
-    setLanguage(newLanguage);
-    setShowLanguageMenu(false);
-    toast.success(
-      `Language changed to ${newLanguage === "en" ? "English" : "বাংলা"}`
-    );
-  };
-
-  const getLanguageDisplay = () => {
-    return language === "en" ? "EN" : "বাংলা";
-  };
-
   return (
     <header
-      className={`fixed top-0 shadow-sm z-40 transition-all duration-200 ${
+      className={`fixed top-0 h-16 shadow-sm z-40 transition-all duration-200 ${
         isOpen
           ? "left-64 md:left-64 sm:left-56"
           : "left-16 md:left-16 sm:left-14"
@@ -97,7 +114,7 @@ export default function Topbar() {
           : "bg-white border-b border-gray-200"
       }`}
     >
-      <div className="flex items-center justify-between px-4 py-3">
+      <div className="flex items-center justify-between h-full px-4">
         {/* Left Section - Menu Toggle & Search */}
         <div className="flex items-center gap-3">
           <button
@@ -112,109 +129,20 @@ export default function Topbar() {
             />
           </button>
 
-          {/* Search Bar */}
-          <div
-            className={`hidden md:flex items-center rounded-lg px-3 py-2 w-64 border ${
-              isDarkMode
-                ? "bg-gray-800 border-gray-600"
-                : "bg-gray-50 border-gray-200"
+          {/* Page Title */}
+          <h1
+            className={`text-lg font-semibold ${
+              isDarkMode ? "text-gray-100" : "text-gray-900"
             }`}
           >
-            <IoMdSearch
-              className={`w-4 h-4 mr-2 ${
-                isDarkMode ? "text-gray-400" : "text-gray-400"
-              }`}
-            />
-            <input
-              type="text"
-              placeholder={getTranslation("searchPlaceholder", language)}
-              className={`bg-transparent border-none outline-none text-sm w-full ${
-                isDarkMode
-                  ? "text-gray-300 placeholder-gray-500"
-                  : "text-gray-700 placeholder-gray-400"
-              }`}
-            />
-          </div>
+            {pageTitle}
+          </h1>
         </div>
 
         {/* Right Section - Icons & Profile */}
         <div className="flex items-center gap-2">
-          {/* Language Dropdown */}
-          <div className="relative" data-language-dropdown>
-            <button
-              onClick={() => setShowLanguageMenu(!showLanguageMenu)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-                isDarkMode ? "hover:bg-gray-800" : "hover:bg-gray-50"
-              }`}
-            >
-              <span
-                className={`text-sm font-medium ${
-                  isDarkMode ? "text-gray-300" : "text-gray-700"
-                }`}
-              >
-                {getLanguageDisplay()}
-              </span>
-              <IoMdArrowDown
-                className={`w-4 h-4 transition-transform duration-200 ${
-                  showLanguageMenu ? "rotate-180" : ""
-                } ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}
-              />
-            </button>
-
-            {/* Language Dropdown Menu */}
-            {showLanguageMenu && (
-              <div
-                className={`absolute right-0 mt-2 w-32 rounded-lg shadow-lg border py-2 z-60 ${
-                  isDarkMode
-                    ? "bg-gray-800 border-gray-700"
-                    : "bg-white border-gray-200"
-                }`}
-              >
-                <button
-                  onClick={() => handleLanguageChange("en")}
-                  className={`flex items-center gap-2 w-full text-left px-3 py-2 text-sm transition-colors ${
-                    language === "en"
-                      ? isDarkMode
-                        ? "bg-blue-900 text-blue-300"
-                        : "bg-blue-50 text-blue-600"
-                      : isDarkMode
-                      ? "text-gray-300 hover:bg-gray-700"
-                      : "text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  🇺🇸 English
-                </button>
-                <button
-                  onClick={() => handleLanguageChange("bn")}
-                  className={`flex items-center gap-2 w-full text-left px-3 py-2 text-sm transition-colors ${
-                    language === "bn"
-                      ? isDarkMode
-                        ? "bg-blue-900 text-blue-300"
-                        : "bg-blue-50 text-blue-600"
-                      : isDarkMode
-                      ? "text-gray-300 hover:bg-gray-700"
-                      : "text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  🇧🇩 বাংলা
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Notifications */}
-          <button
-            className={`relative p-2 rounded-lg transition-colors ${
-              isDarkMode ? "hover:bg-gray-800" : "hover:bg-gray-50"
-            }`}
-          >
-            <IoMdNotifications
-              className={`w-5 h-5 ${
-                isDarkMode ? "text-gray-300" : "text-gray-600"
-              }`}
-            />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-          </button>
+          {/* Doctor update alerts */}
+          <DoctorAlertBell />
 
           {/* Settings */}
           <button

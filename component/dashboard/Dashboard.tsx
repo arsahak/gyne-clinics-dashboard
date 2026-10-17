@@ -8,7 +8,7 @@
 
 const Dashboard = () => {
   return (
-    <div className="p-6">
+    <div>
       <h1 className="text-2xl font-bold">Unused Dashboard Component</h1>
       <p>This component is not currently in use.</p>
     </div>

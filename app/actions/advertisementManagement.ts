@@ -29,6 +29,31 @@ export interface AdvertisementResponse {
   error?: string;
 }
 
+export type AdStatusFilter = "all" | "active" | "paused";
+export type AdSort = "priority" | "newest" | "oldest" | "impressions" | "clicks";
+
+export interface AdPagination {
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+}
+
+export interface AdStats {
+  total: number;
+  active: number;
+  impressions: number;
+  clicks: number;
+}
+
+export interface AdPageResponse {
+  success: boolean;
+  data?: AdvertisementRecord[];
+  pagination?: AdPagination;
+  stats?: AdStats;
+  error?: string;
+}
+
 export interface AdvertisementInput {
   title: string;
   imageUrl: string;
@@ -62,6 +87,41 @@ async function parseResponse(response: Response): Promise<any> {
   const text = await response.text();
   console.error(`Non-JSON response from ${response.url}:`, text.substring(0, 200));
   throw new Error(`Server returned non-JSON response (Status ${response.status})`);
+}
+
+export async function getAdvertisementsPage(options: {
+  placement?: AdPlacement | "all";
+  status?: AdStatusFilter;
+  search?: string;
+  sort?: AdSort;
+  page?: number;
+  limit?: number;
+} = {}): Promise<AdPageResponse> {
+  try {
+    const headers = await getAuthHeaders();
+    const params = new URLSearchParams({
+      page: String(options.page ?? 1),
+      limit: String(options.limit ?? 10),
+      sort: options.sort ?? "priority",
+      status: options.status ?? "all",
+    });
+    if (options.placement && options.placement !== "all") params.set("placement", options.placement);
+    if (options.search) params.set("search", options.search);
+
+    const response = await fetch(`${API_URL}/api/advertisements/admin/list?${params}`, {
+      method: "GET",
+      headers,
+      cache: "no-store",
+    });
+    const data = await parseResponse(response);
+    if (!response.ok) return { success: false, error: data.message || "Failed to fetch advertisements" };
+    return { success: true, data: data.data, pagination: data.pagination, stats: data.stats };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "An error occurred while fetching advertisements",
+    };
+  }
 }
 
 export async function getAdvertisements(placement?: AdPlacement | "all"): Promise<AdvertisementResponse> {

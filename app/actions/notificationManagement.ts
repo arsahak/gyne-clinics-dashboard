@@ -9,6 +9,7 @@ export interface NotificationRecord {
   title: string;
   body: string;
   audience: "all" | "patients" | "doctors";
+  recipient?: string;
   createdAt: string;
 }
 
@@ -61,14 +62,15 @@ export async function getNotifications(): Promise<ApiEnvelope<NotificationRecord
 export async function sendNotification(
   title: string,
   body: string,
-  audience: "all" | "patients" | "doctors"
+  audience: "all" | "patients" | "doctors",
+  recipientId?: string
 ): Promise<ApiEnvelope<NotificationRecord>> {
   try {
     const headers = await getAuthHeaders();
     const response = await fetch(`${API_URL}/api/notifications`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ title, body, audience }),
+      body: JSON.stringify({ title, body, audience, ...(recipientId && { recipient: recipientId }) }),
     });
     const data = await parseResponse(response);
     if (!response.ok) return { success: false, error: data.message || "Failed to send notification" };

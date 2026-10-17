@@ -177,7 +177,7 @@ export default function Statistics() {
       </div>
 
       {/* Content */}
-      <div className="p-8">
+      <div className="pt-6">
         {/* Overall Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-sm p-6 text-white">

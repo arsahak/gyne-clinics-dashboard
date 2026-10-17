@@ -212,7 +212,7 @@ const AddNewUserForm = () => {
   };
 
   return (
-    <div className="min-h-screen p-6">
+    <div>
       <div className="w-full">
         {/* Header */}
         <div className="mb-6">

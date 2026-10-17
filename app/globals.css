@@ -8,6 +8,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  /* Gyneclinics brand colours — kept in sync with website/app/globals.css */
+  --color-brand-primary: #217580;
+  --color-brand-secondary: #834d8b;
+  --color-brand-accent: #d13a8b;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

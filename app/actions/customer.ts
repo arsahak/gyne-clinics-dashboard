@@ -8,13 +8,16 @@ export interface CustomerAddress {
   _id?: string;
   fullName: string;
   phone: string;
+  email?: string;
   addressLine1: string;
   addressLine2?: string;
   city: string;
   state: string;
   zipCode: string;
   country: string;
-  isDefault: boolean;
+  addressType: "billing" | "shipping" | "both";
+  isDefaultBilling: boolean;
+  isDefaultShipping: boolean;
 }
 
 export interface Customer {
@@ -24,7 +27,8 @@ export interface Customer {
   phone?: string;
   role: string;
   avatar?: string;
-  addresses?: CustomerAddress[];
+  billingAddresses?: CustomerAddress[];
+  shippingAddresses?: CustomerAddress[];
   totalOrders?: number;
   totalSpent?: number;
   lastOrderDate?: string;

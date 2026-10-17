@@ -20,6 +20,7 @@ export interface ChatMessageRecord {
   text: string;
   wasRedacted: boolean;
   redactedTypes: string[];
+  flaggedForModeration: boolean;
   createdAt: string;
 }
 

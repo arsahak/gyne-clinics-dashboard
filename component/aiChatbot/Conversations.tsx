@@ -168,7 +168,7 @@ ${msg.sources && msg.sources.length > 0 ? `Sources: ${msg.sources.join(", ")}` :
       </div>
 
       {/* Content */}
-      <div className="p-8">
+      <div className="pt-6">
         {/* Filters */}
         <div className={`rounded-xl shadow-sm p-4 mb-6 ${
           isDarkMode ? "bg-gray-800" : "bg-white"

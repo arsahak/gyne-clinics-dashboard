@@ -10,10 +10,16 @@ export interface ChatMetadataRecord {
   patient: { _id: string; name?: string; phone?: string };
   doctor: { _id: string; name?: string; phone?: string };
   lastMessageAt?: string;
+  lastMessagePreview?: string;
   createdAt: string;
   messageCount: number;
   flaggedCount: number;
   reported: boolean;
+  paid?: boolean;
+  fee?: number;
+  region?: string;
+  paidAt?: string;
+  appointmentSlotsAvailable?: number;
 }
 
 export interface ChatMonitoringResponse {

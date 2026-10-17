@@ -8,7 +8,7 @@ export interface Story {
   _id: string;
   title: string;
   body: string;
-  author: { _id: string; name?: string; phone?: string } | string;
+  author: { _id: string; name?: string; phone?: string; avatar?: string } | string;
   status: "pending" | "approved" | "rejected";
   rejectionReason?: string;
   visibility: "visible" | "hidden";
@@ -16,6 +16,31 @@ export interface Story {
   reviewedAt?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export type StoryStatusFilter = "all" | "pending" | "approved" | "rejected" | "hidden";
+export type StorySort = "newest" | "oldest" | "title_asc" | "title_desc";
+
+export interface StoryPagination {
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+}
+
+export interface StoryStats {
+  total: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+}
+
+export interface StoryPageResponse {
+  success: boolean;
+  data?: Story[];
+  pagination?: StoryPagination;
+  stats?: StoryStats;
+  error?: string;
 }
 
 export interface StoryResponse {
@@ -48,6 +73,39 @@ async function parseResponse(response: Response): Promise<any> {
     const text = await response.text();
     console.error(`Non-JSON response from ${response.url}:`, text.substring(0, 200));
     throw new Error(`Server returned non-JSON response (Status ${response.status})`);
+  }
+}
+
+export async function getStoriesPage(options: {
+  status?: StoryStatusFilter;
+  search?: string;
+  sort?: StorySort;
+  page?: number;
+  limit?: number;
+} = {}): Promise<StoryPageResponse> {
+  try {
+    const headers = await getAuthHeaders();
+    const params = new URLSearchParams({
+      status: options.status ?? "pending",
+      page: String(options.page ?? 1),
+      limit: String(options.limit ?? 10),
+      sort: options.sort ?? "newest",
+    });
+    if (options.search) params.set("search", options.search);
+
+    const response = await fetch(`${API_URL}/api/stories?${params}`, {
+      method: "GET",
+      headers,
+      cache: "no-store",
+    });
+    const data = await parseResponse(response);
+    if (!response.ok) return { success: false, error: data.message || "Failed to fetch stories" };
+    return { success: true, data: data.data, pagination: data.pagination, stats: data.stats };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "An error occurred while fetching stories",
+    };
   }
 }
 

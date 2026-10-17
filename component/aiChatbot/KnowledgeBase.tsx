@@ -200,7 +200,7 @@ const KnowledgeBaseAdmin = () => {
   const getTypeConfig = (type: string) => chatbotTypes.find(t => t.value === type) || chatbotTypes[0];
 
   return (
-    <div className={`min-h-screen p-6 ${isDarkMode ? "bg-gray-900" : "bg-gray-50"}`}>
+    <div className={`${isDarkMode ? "bg-gray-900" : "bg-gray-50"}`}>
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">

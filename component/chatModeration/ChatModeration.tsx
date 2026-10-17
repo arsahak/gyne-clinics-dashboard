@@ -29,7 +29,7 @@ const ChatModeration = ({ initialReports }: ChatModerationProps) => {
   };
 
   return (
-    <div className={`min-h-screen p-6 ${isDarkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"}`}>
+    <div className={`${isDarkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"}`}>
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">Chat Moderation</h1>
         <p className={isDarkMode ? "text-gray-400" : "text-gray-600"}>

@@ -153,7 +153,7 @@ export default function AIChatbotDashboard() {
       </div>
 
       {/* Content */}
-      <div className="p-8">
+      <div className="pt-6">
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-blue-500">

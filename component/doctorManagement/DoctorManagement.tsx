@@ -1,228 +1,494 @@
 "use client";
 import {
   approveDoctor,
+  DoctorPagination,
   DoctorRecord,
-  getDoctors,
+  DoctorSort,
+  DoctorStats,
+  DoctorStatusFilter,
+  getDoctorsPage,
   rejectDoctor,
   removeDoctorAccount,
   setFeaturedDoctor,
   suspendDoctor,
   unsuspendDoctor,
 } from "@/app/actions/doctorManagement";
+import StatCards, { StatCard } from "@/component/shared/StatCards";
+import TablePagination from "@/component/shared/TablePagination";
 import { useSidebar } from "@/lib/SidebarContext";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import toast from "react-hot-toast";
-import { FaBan, FaCheck, FaStar, FaTimes, FaTrash, FaUserMd } from "react-icons/fa";
+import {
+  FaBan,
+  FaCheck,
+  FaCheckCircle,
+  FaClock,
+  FaEye,
+  FaSearch,
+  FaStar,
+  FaTimes,
+  FaTrashAlt,
+  FaUnlock,
+  FaUserMd,
+} from "react-icons/fa";
 
-const TABS = [
-  { label: "Pending Verification", value: "pending" },
-  { label: "Approved", value: "approved" },
-  { label: "Rejected", value: "rejected" },
-  { label: "All", value: "all" },
+const PAGE_SIZE = 10;
+
+const STATUS_OPTIONS: { value: DoctorStatusFilter; label: string }[] = [
+  { value: "all", label: "All doctors" },
+  { value: "pending", label: "Pending verification" },
+  { value: "approved", label: "Approved" },
+  { value: "rejected", label: "Rejected" },
+  { value: "suspended", label: "Blocked" },
+  { value: "featured", label: "Featured" },
+];
+
+const SORT_OPTIONS: { value: DoctorSort; label: string }[] = [
+  { value: "newest", label: "Sort: Newest" },
+  { value: "oldest", label: "Sort: Oldest" },
+  { value: "rating", label: "Sort: Top rated" },
+  { value: "experience", label: "Sort: Most experienced" },
+];
+
+const APPROVAL_LABELS: Record<DoctorRecord["approvalStatus"], string> = {
+  pending: "Pending",
+  approved: "Approved",
+  rejected: "Rejected",
+};
+
+const TOOLBAR_SELECT =
+  "px-3 py-2.5 rounded-lg border text-sm sm:min-w-44 focus:outline-none focus:ring-2 focus:ring-blue-500";
+
+const ACTION_BTN =
+  "h-8 w-8 inline-flex items-center justify-center rounded-lg transition-colors";
+
+const AVATAR_COLORS = [
+  "bg-blue-100 text-blue-600",
+  "bg-indigo-100 text-indigo-600",
+  "bg-purple-100 text-purple-600",
+  "bg-pink-100 text-pink-600",
+  "bg-teal-100 text-teal-600",
+  "bg-orange-100 text-orange-600",
 ];
 
 interface DoctorManagementProps {
   initialDoctors: DoctorRecord[];
-  initialStatus: string;
+  initialPagination?: DoctorPagination;
+  initialStats?: DoctorStats;
 }
 
-const DoctorManagement = ({ initialDoctors, initialStatus }: DoctorManagementProps) => {
+const DoctorManagement = ({
+  initialDoctors,
+  initialPagination,
+  initialStats,
+}: DoctorManagementProps) => {
   const { isDarkMode } = useSidebar();
   const router = useRouter();
   const [doctors, setDoctors] = useState<DoctorRecord[]>(initialDoctors);
-  const [activeStatus, setActiveStatus] = useState(initialStatus);
+  const [pagination, setPagination] = useState<DoctorPagination>(
+    initialPagination || { total: initialDoctors.length, page: 1, limit: PAGE_SIZE, pages: 1 },
+  );
+  const [stats, setStats] = useState<DoctorStats | undefined>(initialStats);
+  const [status, setStatus] = useState<DoctorStatusFilter>("all");
+  const [sort, setSort] = useState<DoctorSort>("newest");
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      pending: isDarkMode ? "bg-yellow-900 text-yellow-300" : "bg-yellow-100 text-yellow-800",
-      approved: isDarkMode ? "bg-green-900 text-green-300" : "bg-green-100 text-green-800",
-      rejected: isDarkMode ? "bg-red-900 text-red-300" : "bg-red-100 text-red-800",
-    };
-    return colors[status] || "";
-  };
+  const muted = isDarkMode ? "text-gray-400" : "text-gray-500";
+  const chip = (light: string, dark: string) => (isDarkMode ? dark : light);
 
-  const handleTabChange = async (status: string) => {
-    setActiveStatus(status);
+  const fetchPage = async (
+    page: number,
+    overrides: { status?: DoctorStatusFilter; search?: string; sort?: DoctorSort } = {},
+  ): Promise<void> => {
+    const query = { status, search, sort, ...overrides };
     setLoading(true);
-    const response = await getDoctors(status);
-    if (response.success && response.data) setDoctors(response.data as DoctorRecord[]);
+    const response = await getDoctorsPage(
+      query.status,
+      query.search || undefined,
+      page,
+      PAGE_SIZE,
+      query.sort,
+    );
+    if (response.success && response.data) {
+      // An action can empty the last page (e.g. approving the final pending doctor) — step back.
+      if (response.data.length === 0 && page > 1) {
+        setLoading(false);
+        return fetchPage(page - 1, overrides);
+      }
+      setDoctors(response.data);
+      if (response.pagination) setPagination(response.pagination);
+      if (response.stats) setStats(response.stats);
+    } else {
+      toast.error(response.error || "Failed to load doctors");
+    }
     setLoading(false);
   };
 
-  const refresh = () => handleTabChange(activeStatus);
+  const refresh = () => fetchPage(pagination.page);
 
-  const handleApprove = async (id: string) => {
-    const response = await approveDoctor(id);
-    if (response.success) { toast.success("Doctor approved"); await refresh(); router.refresh(); }
-    else toast.error(response.error || "Failed to approve doctor");
+  const handleStatusFilter = (value: DoctorStatusFilter) => {
+    setStatus(value);
+    fetchPage(1, { status: value });
   };
 
-  const handleReject = async (id: string) => {
-    const reason = window.prompt("Reason for rejecting this doctor (optional):") || undefined;
-    const response = await rejectDoctor(id, reason);
-    if (response.success) { toast.success("Doctor rejected"); await refresh(); router.refresh(); }
-    else toast.error(response.error || "Failed to reject doctor");
+  const handleSortChange = (value: DoctorSort) => {
+    setSort(value);
+    fetchPage(1, { sort: value });
   };
 
-  const handleSuspend = async (id: string) => {
-    const reason = window.prompt("Reason for suspending this doctor (optional):") || undefined;
-    const response = await suspendDoctor(id, reason);
-    if (response.success) { toast.success("Doctor suspended"); await refresh(); }
-    else toast.error(response.error || "Failed to suspend doctor");
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    fetchPage(1);
   };
 
-  const handleUnsuspend = async (id: string) => {
-    const response = await unsuspendDoctor(id);
-    if (response.success) { toast.success("Suspension lifted"); await refresh(); }
-    else toast.error(response.error || "Failed to unsuspend doctor");
+  const doctorName = (doc: DoctorRecord) => doc.user?.name || doc.user?.phone || "this doctor";
+
+  const handleApprove = async (doc: DoctorRecord) => {
+    const response = await approveDoctor(doc._id);
+    if (response.success) {
+      toast.success("Doctor approved");
+      await refresh();
+    } else toast.error(response.error || "Failed to approve doctor");
   };
 
-  const handleToggleFeatured = async (id: string, featured: boolean) => {
-    const response = await setFeaturedDoctor(id, !featured);
-    if (response.success) { toast.success(!featured ? "Marked as featured" : "Removed from featured"); await refresh(); }
-    else toast.error(response.error || "Failed to update featured status");
+  const handleReject = async (doc: DoctorRecord) => {
+    const input = window.prompt(`Reason for rejecting ${doctorName(doc)} (optional):`);
+    if (input === null) return;
+    const response = await rejectDoctor(doc._id, input.trim() || undefined);
+    if (response.success) {
+      toast.success("Doctor rejected");
+      await refresh();
+    } else toast.error(response.error || "Failed to reject doctor");
   };
 
-  const handleRemove = async (id: string) => {
-    if (!confirm("Permanently remove this doctor's profile? Their account will need to re-onboard.")) return;
-    const response = await removeDoctorAccount(id);
-    if (response.success) { toast.success("Doctor account removed"); setDoctors((prev) => prev.filter((d) => d._id !== id)); router.refresh(); }
-    else toast.error(response.error || "Failed to remove doctor");
+  const handleBlock = async (doc: DoctorRecord) => {
+    const input = window.prompt(`Reason for blocking ${doctorName(doc)}:`);
+    if (input === null) return;
+    const response = await suspendDoctor(doc._id, input.trim() || undefined);
+    if (response.success) {
+      toast.success("Doctor blocked");
+      await refresh();
+    } else toast.error(response.error || "Failed to block doctor");
   };
+
+  const handleUnblock = async (doc: DoctorRecord) => {
+    if (!confirm(`Unblock ${doctorName(doc)}?`)) return;
+    const response = await unsuspendDoctor(doc._id);
+    if (response.success) {
+      toast.success("Doctor unblocked");
+      await refresh();
+    } else toast.error(response.error || "Failed to unblock doctor");
+  };
+
+  const handleToggleFeatured = async (doc: DoctorRecord) => {
+    const response = await setFeaturedDoctor(doc._id, !doc.featured);
+    if (response.success) {
+      toast.success(doc.featured ? "Removed from featured" : "Marked as featured");
+      await refresh();
+    } else toast.error(response.error || "Failed to update featured status");
+  };
+
+  const handleRemove = async (doc: DoctorRecord) => {
+    if (
+      !confirm(
+        `Permanently remove ${doctorName(doc)}'s doctor profile? Their account will need to re-onboard.`,
+      )
+    )
+      return;
+    const response = await removeDoctorAccount(doc._id);
+    if (response.success) {
+      toast.success("Doctor account removed");
+      await refresh();
+    } else toast.error(response.error || "Failed to remove doctor");
+  };
+
+  const getApprovalBadge = (value: DoctorRecord["approvalStatus"]) => {
+    const colors: Record<DoctorRecord["approvalStatus"], string> = {
+      pending: chip("bg-amber-100 text-amber-800", "bg-amber-900 text-amber-300"),
+      approved: chip("bg-green-100 text-green-800", "bg-green-900 text-green-300"),
+      rejected: chip("bg-gray-100 text-gray-600", "bg-gray-700 text-gray-300"),
+    };
+    return (
+      <span className={`px-2 py-1 text-xs rounded-full whitespace-nowrap ${colors[value]}`}>
+        {APPROVAL_LABELS[value]}
+      </span>
+    );
+  };
+
+  const statCards: StatCard[] = [
+    {
+      label: "Total Doctors",
+      value: stats?.total ?? pagination.total,
+      sub: "Registered doctor profiles",
+      icon: FaUserMd,
+      tone: "sky",
+    },
+    {
+      label: "Pending",
+      value: stats?.pending ?? doctors.filter((d) => d.approvalStatus === "pending").length,
+      sub: "Awaiting verification",
+      icon: FaClock,
+      tone: "amber",
+    },
+    {
+      label: "Approved",
+      value: stats?.approved ?? doctors.filter((d) => d.approvalStatus === "approved").length,
+      sub: "Visible to patients",
+      icon: FaCheckCircle,
+      tone: "emerald",
+    },
+    {
+      label: "Blocked",
+      value: stats?.suspended ?? doctors.filter((d) => d.suspended).length,
+      sub: "Account access blocked",
+      icon: FaBan,
+      tone: "orange",
+    },
+  ];
+
+  const selectClass = `${TOOLBAR_SELECT} ${
+    isDarkMode ? "bg-gray-900 border-gray-700 text-gray-100" : "bg-white border-gray-300 text-gray-900"
+  }`;
 
   return (
-    <div className={`min-h-screen p-6 ${isDarkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"}`}>
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Doctors</h1>
-        <p className={isDarkMode ? "text-gray-400" : "text-gray-600"}>
-          Verify credentials, manage suspensions, and curate featured specialists
-        </p>
-      </div>
+    <div className={isDarkMode ? "text-gray-100" : "text-gray-900"}>
+      {/* Stat Cards */}
+      <StatCards cards={statCards} isDarkMode={isDarkMode} />
 
-      <div className="mb-6 flex flex-wrap gap-2">
-        {TABS.map((tab) => (
-          <button
-            key={tab.value}
-            onClick={() => handleTabChange(tab.value)}
-            className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
-              activeStatus === tab.value
-                ? "bg-blue-600 border-blue-600 text-white"
-                : isDarkMode
-                ? "border-gray-700 text-gray-300 hover:bg-gray-800"
-                : "border-gray-300 text-gray-700 hover:bg-gray-100"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* Table */}
+      <div
+        className={`rounded-lg shadow-sm border overflow-hidden ${isDarkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
+      >
+        {/* Toolbar: search + filter + sort */}
+        <div
+          className={`p-4 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between border-b ${
+            isDarkMode ? "border-gray-700" : "border-gray-200"
+          }`}
+        >
+          <form onSubmit={handleSearchSubmit} className="relative w-full md:w-[350px]">
+            <button
+              type="submit"
+              className={`absolute left-3 top-1/2 -translate-y-1/2 ${
+                isDarkMode ? "text-gray-500" : "text-gray-400"
+              }`}
+              aria-label="Search"
+            >
+              <FaSearch size={13} />
+            </button>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search name, phone, specialty or reg. no."
+              className={`w-full pl-10 pr-4 py-2.5 rounded-lg border text-sm ${
+                isDarkMode
+                  ? "bg-gray-900 border-gray-700 text-gray-100 placeholder-gray-500"
+                  : "bg-white border-gray-300 text-gray-900 placeholder-gray-400"
+              } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+            />
+          </form>
 
-      <div className={`rounded-lg shadow-sm border overflow-hidden ${isDarkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
-        {loading ? (
-          <div className="p-6 text-center">Loading doctors...</div>
-        ) : doctors.length === 0 ? (
-          <div className="p-12 text-center">
-            <FaUserMd className={`mx-auto text-4xl mb-2 ${isDarkMode ? "text-gray-600" : "text-gray-300"}`} />
-            <p className="text-gray-500">No doctors here</p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <select
+              value={status}
+              onChange={(e) => handleStatusFilter(e.target.value as DoctorStatusFilter)}
+              className={selectClass}
+            >
+              {STATUS_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <select
+              value={sort}
+              onChange={(e) => handleSortChange(e.target.value as DoctorSort)}
+              className={selectClass}
+            >
+              {SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
+        </div>
+
+        <div className="overflow-x-auto">
+          {loading ? (
+            <div className="p-6 text-center">Loading doctors...</div>
+          ) : (
             <table className="w-full">
               <thead className={isDarkMode ? "bg-gray-700" : "bg-gray-50"}>
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Doctor</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Specialization</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Experience</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Reg. Number</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Rating</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Documents</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">Actions</th>
+                  {["Doctor", "Specialization", "Experience", "Fee", "Rating", "Status"].map(
+                    (heading) => (
+                      <th
+                        key={heading}
+                        className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap"
+                      >
+                        {heading}
+                      </th>
+                    ),
+                  )}
+                  <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className={`divide-y ${isDarkMode ? "divide-gray-700" : "divide-gray-200"}`}>
-                {doctors.map((doc) => (
+                {doctors.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-12 text-center">
+                      <FaUserMd
+                        className={`mx-auto text-4xl mb-2 ${isDarkMode ? "text-gray-600" : "text-gray-300"}`}
+                      />
+                      <p className="text-gray-500">No doctors found</p>
+                    </td>
+                  </tr>
+                )}
+                {doctors.map((doc, index) => (
                   <tr key={doc._id} className={isDarkMode ? "hover:bg-gray-700" : "hover:bg-gray-50"}>
                     <td className="px-6 py-4">
-                      <div className="font-medium flex items-center gap-2">
-                        {doc.user.name || "Unnamed"}
-                        {doc.featured && <FaStar className="text-yellow-500" title="Featured" />}
+                      <div className="flex items-center">
+                        {doc.user?.avatar ? (
+                          <Image
+                            src={doc.user.avatar}
+                            alt={doc.user.name || "Doctor"}
+                            width={36}
+                            height={36}
+                            className="h-9 w-9 rounded-full object-cover mr-3 shrink-0"
+                          />
+                        ) : (
+                          <div
+                            className={`h-9 w-9 rounded-full flex items-center justify-center font-bold mr-3 shrink-0 ${
+                              AVATAR_COLORS[index % AVATAR_COLORS.length]
+                            }`}
+                          >
+                            {(doc.user?.name || doc.user?.phone || "?")
+                              .replace(/^Dr\.?\s*/i, "")
+                              .charAt(0)
+                              .toUpperCase()}
+                          </div>
+                        )}
+                        <div>
+                          <div className="font-medium flex items-center gap-1.5 whitespace-nowrap">
+                            {doc.user?.name || "Unnamed"}
+                            {doc.featured && (
+                              <FaStar className="text-amber-400" size={12} title="Featured" />
+                            )}
+                          </div>
+                          <div className={`text-xs ${muted}`}>{doc.user?.phone || "—"}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <div>{doc.specialization || "—"}</div>
+                      {doc.hospitalName && (
+                        <div className={`text-xs ${muted}`}>{doc.hospitalName}</div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-sm whitespace-nowrap">
+                      {doc.experienceYears != null ? `${doc.experienceYears} yrs` : "—"}
+                    </td>
+                    <td className="px-6 py-4 text-sm whitespace-nowrap">
+                      {doc.consultationFee ? `£${doc.consultationFee}` : "—"}
+                    </td>
+                    <td className="px-6 py-4 text-sm whitespace-nowrap">
+                      {doc.reviewCount > 0 ? (
+                        <span className="inline-flex items-center gap-1">
+                          <FaStar className="text-amber-400" size={12} />
+                          {doc.avgRating.toFixed(1)}
+                          <span className={muted}>({doc.reviewCount})</span>
+                        </span>
+                      ) : (
+                        <span className={muted}>No reviews</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {getApprovalBadge(doc.approvalStatus)}
                         {doc.suspended && (
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${isDarkMode ? "bg-red-900 text-red-300" : "bg-red-100 text-red-700"}`}>
-                            Suspended
+                          <span
+                            title={doc.suspensionReason}
+                            className={`px-2 py-1 text-xs rounded-full ${chip("bg-red-100 text-red-800", "bg-red-900 text-red-300")}`}
+                          >
+                            Blocked
                           </span>
                         )}
                       </div>
-                      <div className={`text-xs ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>{doc.user.phone}</div>
                     </td>
-                    <td className="px-6 py-4 text-sm">{doc.specialization || "-"}</td>
-                    <td className="px-6 py-4 text-sm whitespace-nowrap">
-                      {doc.experienceYears !== undefined && doc.experienceYears !== null ? `${doc.experienceYears} yrs` : "-"}
-                    </td>
-                    <td className="px-6 py-4 text-sm whitespace-nowrap">{doc.registrationNumber || "-"}</td>
-                    <td className="px-6 py-4 text-sm">
-                      {doc.reviewCount > 0 ? `${doc.avgRating.toFixed(1)} (${doc.reviewCount})` : "No reviews"}
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      {doc.verificationDocuments && doc.verificationDocuments.length > 0 ? (
-                        <div className="flex flex-col gap-1">
-                          {doc.verificationDocuments.map((url, i) => (
-                            <a
-                              key={url}
-                              href={url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:underline text-xs"
-                            >
-                              Document {i + 1}
-                            </a>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className={isDarkMode ? "text-gray-500" : "text-gray-400"}>None submitted</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(doc.approvalStatus)}`}>
-                        {doc.approvalStatus}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2 flex-wrap">
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => router.push(`/doctors/${doc._id}`)}
+                          className={`${ACTION_BTN} ${chip("bg-blue-50 text-blue-600 hover:bg-blue-100", "bg-blue-900/60 text-blue-300 hover:bg-blue-900")}`}
+                          title="View pricing, availability, appointments & payments"
+                        >
+                          <FaEye size={14} />
+                        </button>
+
                         {doc.approvalStatus === "pending" && (
                           <>
-                            <button onClick={() => handleApprove(doc._id)} className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title="Approve">
-                              <FaCheck />
+                            <button
+                              onClick={() => handleApprove(doc)}
+                              className={`${ACTION_BTN} ${chip("bg-emerald-50 text-emerald-600 hover:bg-emerald-100", "bg-emerald-900/60 text-emerald-300 hover:bg-emerald-900")}`}
+                              title="Approve"
+                            >
+                              <FaCheck size={13} />
                             </button>
-                            <button onClick={() => handleReject(doc._id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg" title="Reject">
-                              <FaTimes />
+                            <button
+                              onClick={() => handleReject(doc)}
+                              className={`${ACTION_BTN} ${chip("bg-rose-50 text-rose-600 hover:bg-rose-100", "bg-rose-900/60 text-rose-300 hover:bg-rose-900")}`}
+                              title="Reject"
+                            >
+                              <FaTimes size={13} />
                             </button>
                           </>
                         )}
+
                         {doc.approvalStatus === "approved" && (
                           <>
                             <button
-                              onClick={() => handleToggleFeatured(doc._id, doc.featured)}
-                              className={`p-2 rounded-lg ${doc.featured ? "text-yellow-600 hover:bg-yellow-50" : "text-gray-400 hover:bg-gray-100"}`}
-                              title={doc.featured ? "Unfeature" : "Feature"}
+                              onClick={() => handleToggleFeatured(doc)}
+                              className={`${ACTION_BTN} ${
+                                doc.featured
+                                  ? chip("bg-amber-100 text-amber-500 hover:bg-amber-200", "bg-amber-900 text-amber-300 hover:bg-amber-800")
+                                  : chip("bg-gray-100 text-gray-400 hover:bg-amber-50 hover:text-amber-500", "bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-amber-300")
+                              }`}
+                              title={doc.featured ? "Remove from featured" : "Mark as featured"}
                             >
-                              <FaStar />
+                              <FaStar size={13} />
                             </button>
                             {doc.suspended ? (
-                              <button onClick={() => handleUnsuspend(doc._id)} className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title="Lift suspension">
-                                <FaCheck />
+                              <button
+                                onClick={() => handleUnblock(doc)}
+                                className={`${ACTION_BTN} ${chip("bg-emerald-50 text-emerald-600 hover:bg-emerald-100", "bg-emerald-900/60 text-emerald-300 hover:bg-emerald-900")}`}
+                                title="Unblock"
+                              >
+                                <FaUnlock size={13} />
                               </button>
                             ) : (
-                              <button onClick={() => handleSuspend(doc._id)} className="p-2 text-yellow-600 hover:bg-yellow-50 rounded-lg" title="Suspend">
-                                <FaBan />
+                              <button
+                                onClick={() => handleBlock(doc)}
+                                className={`${ACTION_BTN} ${chip("bg-rose-50 text-rose-600 hover:bg-rose-100", "bg-rose-900/60 text-rose-300 hover:bg-rose-900")}`}
+                                title="Block"
+                              >
+                                <FaBan size={13} />
                               </button>
                             )}
                           </>
                         )}
-                        <button onClick={() => handleRemove(doc._id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg" title="Remove account">
-                          <FaTrash />
+
+                        <button
+                          onClick={() => handleRemove(doc)}
+                          className={`${ACTION_BTN} ${chip("bg-gray-100 text-gray-500 hover:bg-rose-100 hover:text-rose-600", "bg-gray-700 text-gray-400 hover:bg-rose-900 hover:text-rose-300")}`}
+                          title="Remove account"
+                        >
+                          <FaTrashAlt size={12} />
                         </button>
                       </div>
                     </td>
@@ -230,8 +496,19 @@ const DoctorManagement = ({ initialDoctors, initialStatus }: DoctorManagementPro
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
+          )}
+        </div>
+
+        <TablePagination
+          page={pagination.page}
+          pages={pagination.pages}
+          limit={pagination.limit}
+          total={pagination.total}
+          itemLabel="doctors"
+          isDarkMode={isDarkMode}
+          disabled={loading}
+          onPageChange={(page) => fetchPage(page)}
+        />
       </div>
     </div>
   );

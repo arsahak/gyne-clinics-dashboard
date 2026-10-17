@@ -27,6 +27,32 @@ export interface ContentResponse {
   error?: string;
 }
 
+export type ContentStatusFilter = "all" | "published" | "draft" | "hidden" | "sponsored";
+export type ContentSort = "newest" | "oldest" | "title_asc" | "title_desc";
+
+export interface ContentPagination {
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+}
+
+export interface ContentStats {
+  total: number;
+  published: number;
+  draft: number;
+  hidden: number;
+}
+
+export interface ContentPageResponse {
+  success: boolean;
+  data?: Content[];
+  pagination?: ContentPagination;
+  stats?: ContentStats;
+  categories?: string[];
+  error?: string;
+}
+
 export interface ModerationLog {
   _id: string;
   moderator: { _id: string; name?: string };
@@ -66,6 +92,49 @@ async function parseResponse(response: Response): Promise<any> {
     const text = await response.text();
     console.error(`Non-JSON response from ${response.url}:`, text.substring(0, 200));
     throw new Error(`Server returned non-JSON response (Status ${response.status})`);
+  }
+}
+
+// Paginated admin table: search, category/status filters, sort, plus global stats and category list.
+export async function getContentsPage(options: {
+  category?: string;
+  status?: ContentStatusFilter;
+  search?: string;
+  sort?: ContentSort;
+  page?: number;
+  limit?: number;
+} = {}): Promise<ContentPageResponse> {
+  try {
+    const headers = await getAuthHeaders();
+    const params = new URLSearchParams({
+      all: "true",
+      page: String(options.page ?? 1),
+      limit: String(options.limit ?? 10),
+      sort: options.sort ?? "newest",
+      status: options.status ?? "all",
+    });
+    if (options.category) params.set("category", options.category);
+    if (options.search) params.set("search", options.search);
+
+    const response = await fetch(`${API_URL}/api/content?${params}`, {
+      method: "GET",
+      headers,
+      cache: "no-store",
+    });
+    const data = await parseResponse(response);
+    if (!response.ok) return { success: false, error: data.message || "Failed to fetch content" };
+    return {
+      success: true,
+      data: data.data,
+      pagination: data.pagination,
+      stats: data.stats,
+      categories: data.categories,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "An error occurred while fetching content",
+    };
   }
 }
 
