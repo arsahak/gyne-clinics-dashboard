@@ -4,6 +4,16 @@ import CredentialsProvider from "next-auth/providers/credentials";
 // 30 days in seconds
 const THIRTY_DAYS_IN_SECONDS = 30 * 24 * 60 * 60;
 
+/** Expiry (ms) read from the backend JWT's `exp`, so the session ends when the backend token does. */
+function backendTokenExpiry(token: string): number | undefined {
+  try {
+    const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString());
+    return typeof payload.exp === "number" ? payload.exp * 1000 : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export const { auth, signIn, signOut, handlers } = NextAuth({
   session: {
     strategy: "jwt",
@@ -94,7 +104,8 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
         }
 
         try {
-          const response = await fetch(`${apiUrl}/api/auth/login`, {
+          // Gyneclinics backend staff login (moderator, admin, superadmin).
+          const response = await fetch(`${apiUrl}/api/v1/auth/staff/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -121,24 +132,27 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
             throw new Error(data.message || "Invalid email or password");
           }
 
-          // Backend returns: { success, message, user, accessToken }
-          if (!data.user || !data.accessToken) {
+          // Backend returns: { success, message, data: { token, user } }
+          const user = data.data?.user;
+          const accessToken = data.data?.token;
+          if (!user || !accessToken) {
             console.error("Incomplete user data received from server.");
             throw new Error("Server error. Please try again.");
           }
 
           // Return user with accessToken and token issue time
           return {
-            id: data.user._id,
-            _id: data.user._id,
-            name: data.user.name,
-            email: data.user.email,
-            role: data.user.role,
-            provider: data.user.provider,
-            avatar: data.user.avatar,
-            isEmailVerified: data.user.isEmailVerified,
+            id: user._id,
+            _id: user._id,
+            name: user.fullName,
+            email: user.email,
+            role: user.role,
+            provider: "credentials",
+            avatar: user.avatar,
+            isEmailVerified: user.emailVerified,
             emailVerified: null, // Required by AdapterUser
-            accessToken: data.accessToken,
+            accessToken,
+            accessTokenExpires: backendTokenExpiry(accessToken),
             tokenIssuedAt: Date.now(), // Track when token was issued
           };
         } catch (error) {
@@ -166,6 +180,18 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
         token.isEmailVerified = user.isEmailVerified;
         token.accessToken = user.accessToken;
         token.tokenIssuedAt = user.tokenIssuedAt || Date.now();
+        token.accessTokenExpires = user.accessTokenExpires;
+      }
+
+      // The backend token expired (JWT_EXPIRES_IN in the backend .env): end the
+      // session so the middleware sends the user to sign in again, instead of
+      // every page failing with 401.
+      if (token.accessTokenExpires && Date.now() >= (token.accessTokenExpires as number)) {
+        return {
+          ...token,
+          accessToken: null,
+          error: "TokenExpired",
+        };
       }
 
       // Check if token has expired (30 days)

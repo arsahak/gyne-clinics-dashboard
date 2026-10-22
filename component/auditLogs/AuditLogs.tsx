@@ -1,5 +1,7 @@
 "use client";
 import { AuditLogRecord } from "@/app/actions/auditLogs";
+import TablePagination from "@/component/shared/TablePagination";
+import { usePagedList } from "@/component/shared/usePagedList";
 import { useSidebar } from "@/lib/SidebarContext";
 import { useMemo, useState } from "react";
 import { FaClipboardList, FaLock } from "react-icons/fa";
@@ -35,6 +37,7 @@ const AuditLogs = ({ logs }: AuditLogsProps) => {
     () => (targetFilter === "all" ? logs : logs.filter((l) => l.targetType === targetFilter)),
     [logs, targetFilter]
   );
+  const paged = usePagedList(filtered, 15, targetFilter);
 
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleString("en-US", {
@@ -99,7 +102,7 @@ const AuditLogs = ({ logs }: AuditLogsProps) => {
                 </tr>
               </thead>
               <tbody className={`divide-y ${isDarkMode ? "divide-gray-700" : "divide-gray-200"}`}>
-                {filtered.map((log) => (
+                {paged.items.map((log) => (
                   <tr key={log._id} className={isDarkMode ? "hover:bg-gray-700" : "hover:bg-gray-50"}>
                     <td className="px-6 py-4">
                       <div className="font-medium">{log.admin?.name || "—"}</div>
@@ -118,6 +121,7 @@ const AuditLogs = ({ logs }: AuditLogsProps) => {
             </table>
           )}
         </div>
+        <TablePagination {...paged} itemLabel="log entries" isDarkMode={isDarkMode} onPageChange={paged.setPage} />
       </div>
     </div>
   );

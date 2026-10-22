@@ -5,6 +5,7 @@ import { useSidebar } from "@/lib/SidebarContext";
 import { getTranslation } from "@/lib/translations";
 import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
@@ -12,10 +13,13 @@ import {
   IoMdArrowDown,
   IoMdLogOut,
   IoMdMenu,
+  IoMdMoon,
   IoMdPerson,
   IoMdSettings,
+  IoMdSunny,
 } from "react-icons/io";
-import DoctorAlertBell from "./DoctorAlertBell";
+import NotificationBell from "./NotificationBell";
+import type { Access } from "./LayoutWrapper";
 
 // Ordered longest-path-first so nested routes (e.g. /ai-chatbot/stats) match
 // before their parent (/ai-chatbot).
@@ -26,32 +30,38 @@ const PAGE_TITLES: { path: string; title: string }[] = [
   { path: "/ai-chatbot", title: "AI Chatbot" },
   { path: "/patient", title: "Patients" },
   { path: "/doctor-reviews", title: "Doctor Reviews" },
-  { path: "/doctor-analytics", title: "Doctor Analytics" },
+  { path: "/doctor-analytics", title: "Analytics" },
   { path: "/chat-moderation", title: "Chat Moderation" },
   { path: "/chat-monitoring", title: "Chat Monitoring" },
-  { path: "/consultation-settings", title: "Consultation Settings" },
+  { path: "/consultation-settings", title: "Consultation Rules" },
   { path: "/audit-logs", title: "Audit Logs" },
   { path: "/advertisements", title: "Advertisements" },
   { path: "/notifications", title: "Notifications" },
-  { path: "/customers", title: "Customers" },
-  { path: "/doctors", title: "Doctor Discovery" },
+  { path: "/doctors", title: "Doctors" },
   { path: "/reports", title: "Reports" },
-  { path: "/content", title: "Content" },
-  { path: "/stories", title: "Stories" },
-  { path: "/settings", title: "Settings" },
+  { path: "/content", title: "Learn Articles" },
+  { path: "/stories", title: "Community Stories" },
+  { path: "/settings", title: "Team & Roles" },
   { path: "/profile", title: "Profile" },
+  { path: "/consultations", title: "Consultations" },
+  { path: "/payments", title: "Payments" },
+  { path: "/payouts", title: "Payouts" },
+  { path: "/fees-commission", title: "Fees & Commission" },
   { path: "/", title: "Dashboard" },
 ];
 
 function getPageTitle(pathname: string): string {
   const match = PAGE_TITLES.find(
-    ({ path }) => pathname === path || pathname.startsWith(`${path}/`)
+    ({ path }) => pathname === path || pathname.startsWith(`${path}/`),
   );
   return match?.title || "Dashboard";
 }
 
-export default function Topbar() {
-  const { isOpen, isMobile, isDarkMode } = useSidebar();
+export default function Topbar({ access = null }: { access?: Access }) {
+  // Unknown access shows everything; the backend still decides.
+  const can = (area: "doctors" | "team") =>
+    !access || (access[area] ?? "none") !== "none";
+  const { isOpen, isMobile, isDarkMode, setIsDarkMode } = useSidebar();
   const { language } = useLanguage();
   const { data: session } = useSession();
   const user = session?.user;
@@ -141,21 +151,59 @@ export default function Topbar() {
 
         {/* Right Section - Icons & Profile */}
         <div className="flex items-center gap-2">
-          {/* Doctor update alerts */}
-          <DoctorAlertBell />
-
-          {/* Settings */}
+          {/* Light / dark switch */}
           <button
-            className={`p-2 rounded-lg transition-colors ${
-              isDarkMode ? "hover:bg-gray-800" : "hover:bg-gray-50"
+            type="button"
+            role="switch"
+            aria-checked={isDarkMode}
+            aria-label="Dark mode"
+            title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            className={`relative mr-1 flex h-8 w-[60px] shrink-0 items-center justify-between rounded-full px-2 transition-colors ${
+              isDarkMode
+                ? "bg-gray-700 ring-1 ring-gray-600"
+                : "bg-gray-100 ring-1 ring-gray-200"
             }`}
           >
-            <IoMdSettings
-              className={`w-5 h-5 ${
-                isDarkMode ? "text-gray-300" : "text-gray-600"
+            <IoMdSunny
+              className={`relative z-10 h-4 w-4 transition-colors ${isDarkMode ? "text-gray-400" : "text-amber-500"}`}
+            />
+            <IoMdMoon
+              className={`relative z-10 h-4 w-4 transition-colors ${isDarkMode ? "text-indigo-300" : "text-gray-400"}`}
+            />
+            <span
+              className={`absolute top-1 h-6 w-6 rounded-full shadow transition-all duration-200 ${
+                isDarkMode ? "left-[32px] bg-gray-900" : "left-1 bg-white"
               }`}
             />
           </button>
+
+          {/* Live notifications (each person gets what their role can see) */}
+          <NotificationBell />
+
+          {/* Settings (Team & Roles) */}
+          {can("team") && (
+            <Link
+              href="/settings"
+              title="Settings"
+              aria-label="Settings"
+              className={`p-2 rounded-lg transition-colors ${
+                pathname === "/settings" || pathname.startsWith("/settings/")
+                  ? isDarkMode
+                    ? "bg-gray-800"
+                    : "bg-gray-100"
+                  : isDarkMode
+                    ? "hover:bg-gray-800"
+                    : "hover:bg-gray-50"
+              }`}
+            >
+              <IoMdSettings
+                className={`w-5 h-5 ${
+                  isDarkMode ? "text-gray-300" : "text-gray-600"
+                }`}
+              />
+            </Link>
+          )}
 
           {/* Profile Dropdown (Logout only) */}
           <div className="relative" data-profile-dropdown>
@@ -223,7 +271,10 @@ export default function Topbar() {
                       ? "text-gray-300 hover:bg-gray-700"
                       : "text-gray-700 hover:bg-gray-50"
                   }`}
-                  onClick={() => router.push("/profile")}
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    router.push("/profile");
+                  }}
                 >
                   <IoMdPerson className="w-4 h-4" />
                   {getTranslation("profile", language)}
@@ -234,7 +285,10 @@ export default function Topbar() {
                   }`}
                 />
                 <button
-                  onClick={handleLogout}
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    handleLogout();
+                  }}
                   disabled={isLoggingOut}
                   className={`flex items-center gap-2 w-full text-left px-4 py-2 text-sm transition-colors cursor-pointer ${
                     isDarkMode

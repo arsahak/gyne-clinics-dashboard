@@ -1,9 +1,10 @@
 "use client";
-import { createAdvertisement } from "@/app/actions/advertisementManagement";
+import { createAdvertisement } from "@/app/actions/advertisementAction";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import toast from "react-hot-toast";
-import AdvertisementForm, { AdvertisementFormData } from "./AdvertisementForm";
+import { toAdInput } from "./adForm";
+import AdvertisementForm, { type AdvertisementFormData } from "./AdvertisementForm";
 
 const AdvertisementAdd = () => {
   const router = useRouter();
@@ -11,21 +12,12 @@ const AdvertisementAdd = () => {
 
   const handleSubmit = async (data: AdvertisementFormData) => {
     setIsSubmitting(true);
-
     try {
-      const response = await createAdvertisement({
-        ...data,
-        startDate: data.startDate || undefined,
-        endDate: data.endDate || undefined,
-      });
-
+      const response = await createAdvertisement(toAdInput(data));
       if (response.success) {
-        toast.success("Advertisement created successfully!");
+        toast.success("Ad created successfully!");
         router.push("/advertisements");
-        router.refresh();
-      } else {
-        toast.error(response.error || "Failed to create advertisement");
-      }
+      } else toast.error(response.error || "Failed to create the ad");
     } catch (error) {
       toast.error("An unexpected error occurred");
       console.error(error);
@@ -34,7 +26,15 @@ const AdvertisementAdd = () => {
     }
   };
 
-  return <AdvertisementForm title="Add New Advertisement" onSubmit={handleSubmit} isSubmitting={isSubmitting} />;
+  return (
+    <AdvertisementForm
+      title="Add New Ad"
+      description="Create a labelled banner for the app. The preview shows exactly how patients see it."
+      submitLabel="Create Ad"
+      onSubmit={handleSubmit}
+      isSubmitting={isSubmitting}
+    />
+  );
 };
 
 export default AdvertisementAdd;

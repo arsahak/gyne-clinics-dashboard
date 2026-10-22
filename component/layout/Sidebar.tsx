@@ -1,143 +1,136 @@
 "use client";
 
-import { useLanguage } from "@/lib/LanguageContext";
+import type { Access } from "@/component/layout/LayoutWrapper";
+import type { AreaKey } from "@/lib/access";
 import { useSidebar } from "@/lib/SidebarContext";
-import { getTranslation } from "@/lib/translations";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   FaAd,
+  FaBalanceScale,
   FaBookOpen,
+  FaBullhorn,
+  FaCalendarCheck,
+  FaChartLine,
+  FaComments,
   FaFileAlt,
+  FaFlag,
+  FaMoneyBillWave,
+  FaPercent,
   FaRobot,
+  FaStar,
   FaStethoscope,
   FaUserShield,
+  FaUsersCog,
+  FaWallet,
 } from "react-icons/fa";
-import { IoIosArrowDown, IoMdHome, IoMdMoon, IoMdSunny } from "react-icons/io";
-import { MdSettings, MdVideocam } from "react-icons/md";
+import { IoIosArrowDown, IoMdHome } from "react-icons/io";
+import { MdVideocam } from "react-icons/md";
 import { RxDoubleArrowLeft } from "react-icons/rx";
 
 interface MenuItem {
   icon: React.ReactElement;
   label: string;
   path: string;
+  /** The Team & Roles area that controls who sees it (none = always shown). */
+  area?: AreaKey;
   expandable?: boolean;
   subItems?: { label: string; path: string }[];
   badge?: string;
 }
 
-const getMenuItems = (language: string): MenuItem[] => [
-  {
-    icon: <IoMdHome className="w-5 h-5" />,
-    label: "Dashboard",
-    path: "/",
-  },
-  {
-    icon: <FaUserShield className="w-5 h-5" />,
-    label: "Patient",
-    path: "/patient",
-  },
-  {
-    icon: <FaStethoscope className="w-5 h-5" />,
-    label: "Doctor Discovery",
-    path: "/doctors",
-    expandable: true,
-    subItems: [
-      { label: "Doctors", path: "/doctors" },
-      { label: "Doctor Reviews", path: "/doctor-reviews" },
-      { label: "Chat Moderation", path: "/chat-moderation" },
-      { label: "Chat Monitoring", path: "/chat-monitoring" },
-      { label: "Reports", path: "/reports" },
-      { label: "Notifications", path: "/notifications" },
-      { label: "Analytics", path: "/doctor-analytics" },
-    ],
-  },
-  // {
-  //   icon: <FaShoppingCart className="w-5 h-5" />,
-  //   label: "Orders",
-  //   path: "/orders",
-  // },
-  // {
-  //   icon: <FaBoxOpen className="w-5 h-5" />,
-  //   label: "Products",
-  //   path: "/products",
-  // },
-  // {
-  //   icon: <FaTags className="w-5 h-5" />,
-  //   label: "Categories",
-  //   path: "/categories",
-  // },
-  // {
-  //   icon: <MdInventory className="w-5 h-5" />,
-  //   label: "Inventory",
-  //   path: "/inventory",
-  // },
-  // {
-  //   icon: <FaUsers className="w-5 h-5" />,
-  //   label: "Customers",
-  //   path: "/customers",
-  // },
-  // {
-  //   icon: <FaChartLine className="w-5 h-5" />,
-  //   label: "Analytics",
-  //   path: "/analytics",
-  // },
-  // {
-  //   icon: <FaClipboardList className="w-5 h-5" />,
-  //   label: "Reviews",
-  //   path: "/reviews",
-  // },
-  {
-    icon: <FaFileAlt className="w-5 h-5" />,
-    label: "Content",
-    path: "/content",
-  },
-  {
-    icon: <FaBookOpen className="w-5 h-5" />,
-    label: "Stories",
-    path: "/stories",
-  },
+interface MenuSection {
+  /** Shown above the group when the sidebar is open. */
+  title?: string;
+  items: MenuItem[];
+}
 
+const icon = (Icon: typeof FaAd) => <Icon className="w-[18px] h-[18px]" />;
+
+// Grouped by the job: people, care, money, content, then settings.
+const getMenuSections = (): MenuSection[] => [
+  { items: [{ icon: <IoMdHome className="w-5 h-5" />, label: "Dashboard", path: "/" }] },
   {
-    icon: <FaRobot className="w-5 h-5" />,
-    label: "AI Chatbot",
-    path: "/ai-chatbot",
-    expandable: true,
-    // badge: "NEW",
-    subItems: [
-      { label: "Train AI", path: "/ai-chatbot/knowledge-base" },
-      { label: "Conversations", path: "/ai-chatbot/conversations" },
-      { label: "Statistics", path: "/ai-chatbot/stats" },
+    title: "People",
+    items: [
+      { icon: icon(FaUserShield), label: "Patients", area: "patients", path: "/patient" },
+      { icon: icon(FaStethoscope), label: "Doctors", area: "doctors", path: "/doctors" },
     ],
   },
   {
-    icon: <FaAd className="w-5 h-5" />,
-    label: "Advertisements",
-    path: "/advertisements",
-  },
-  // {
-  //   icon: <FaClipboardCheck className="w-5 h-5" />,
-  //   label: "Audit Logs",
-  //   path: "/audit-logs",
-  // },
-  {
-    icon: <MdVideocam className="w-5 h-5" />,
-    label: "Consultation Settings",
-    path: "/consultation-settings",
+    title: "Care",
+    items: [
+      { icon: icon(FaCalendarCheck), label: "Consultations", area: "consultations", path: "/consultations" },
+      { icon: icon(FaStar), label: "Doctor Reviews", area: "reviews", path: "/doctor-reviews" },
+    ],
   },
   {
-    icon: <MdSettings className="w-5 h-5" />,
-    label: "Settings",
-    path: "/settings",
+    title: "Safety",
+    items: [
+      { icon: icon(FaFlag), label: "Reports", area: "reports", path: "/reports" },
+      { icon: icon(FaBalanceScale), label: "Chat Moderation", area: "chat_moderation", path: "/chat-moderation" },
+      { icon: icon(FaComments), label: "Chat Monitoring", area: "chat_monitoring", path: "/chat-monitoring" },
+    ],
+  },
+  {
+    title: "Money",
+    items: [
+      { icon: icon(FaMoneyBillWave), label: "Payments", area: "payments", path: "/payments" },
+      { icon: icon(FaWallet), label: "Payouts", area: "payouts", path: "/payouts" },
+    ],
+  },
+  {
+    title: "Content",
+    items: [
+      { icon: icon(FaFileAlt), label: "Learn Articles", area: "content", path: "/content" },
+      { icon: icon(FaBookOpen), label: "Community Stories", area: "stories", path: "/stories" },
+      { icon: icon(FaAd), label: "Advertisements", area: "ads", path: "/advertisements" },
+    ],
+  },
+  {
+    title: "Engage",
+    items: [
+      { icon: icon(FaBullhorn), label: "Notifications", area: "notifications", path: "/notifications" },
+      {
+        icon: icon(FaRobot),
+        label: "AI Chatbot",
+        area: "chatbot",
+        path: "/ai-chatbot",
+        expandable: true,
+        subItems: [
+          { label: "Overview", path: "/ai-chatbot" },
+          { label: "Train AI", path: "/ai-chatbot/knowledge-base" },
+          { label: "Conversations", path: "/ai-chatbot/conversations" },
+          { label: "Statistics", path: "/ai-chatbot/stats" },
+        ],
+      },
+    ],
+  },
+  { title: "Insights", items: [{ icon: icon(FaChartLine), label: "Analytics", area: "analytics", path: "/doctor-analytics" }] },
+  {
+    title: "Settings",
+    items: [
+      { icon: icon(FaPercent), label: "Fees & Commission", area: "fees", path: "/fees-commission" },
+      { icon: <MdVideocam className="w-5 h-5" />, label: "Consultation Rules", area: "fees", path: "/consultation-settings" },
+      { icon: icon(FaUsersCog), label: "Team & Roles", area: "team", path: "/settings" },
+    ],
   },
 ];
 
-export default function Sidebar() {
-  const { isOpen, setIsOpen, isMobile, isDarkMode, setIsDarkMode } =
-    useSidebar();
-  const { language } = useLanguage();
+/** Active on its own page and the pages under it (e.g. /content/123). */
+const isActivePath = (pathname: string, path: string) =>
+  path === "/" ? pathname === "/" : pathname === path || pathname.startsWith(`${path}/`);
+
+/** Only the pages this role can open (all of them when access is unknown). */
+const visibleSections = (access: Access): MenuSection[] =>
+  getMenuSections()
+    .map((section) => ({ ...section, items: section.items.filter((item) => !access || !item.area || (access[item.area] ?? "none") !== "none") }))
+    .filter((section) => section.items.length > 0);
+
+export default function Sidebar({ access = null }: { access?: Access }) {
+  const { isOpen, setIsOpen, isMobile, isDarkMode } = useSidebar();
   const pathname = usePathname();
   const [expandedSections, setExpandedSections] = useState<
     Record<string, boolean>
@@ -145,11 +138,11 @@ export default function Sidebar() {
   const toggleSection = (label: string) => {
     setExpandedSections((prev) => ({
       ...prev,
-      [label]: !prev[label],
+      [label]: !(prev[label] ?? isActivePath(pathname, menuSections.flatMap((s) => s.items).find((i) => i.label === label)?.path ?? "")),
     }));
   };
 
-  const menuItems = getMenuItems(language);
+  const menuSections = visibleSections(access);
 
   return (
     <div className="relative">
@@ -187,17 +180,34 @@ export default function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {menuItems.map((item) => {
-            const isActive = pathname === item.path;
-            const isExpanded = expandedSections[item.label];
+        <nav className={`sidebar-scroll flex-1 overflow-y-auto py-4 pl-3 pr-2 ${isDarkMode ? "sidebar-scroll-dark" : ""}`}>
+          {menuSections.map((section, sectionIndex) => (
+            <div key={section.title ?? "top"} className={sectionIndex > 0 ? "mt-4" : ""}>
+              {section.title &&
+                (isOpen ? (
+                  <p
+                    className={`px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider ${
+                      isDarkMode ? "text-gray-500" : "text-gray-400"
+                    }`}
+                  >
+                    {section.title}
+                  </p>
+                ) : (
+                  <div className={`mx-3 mb-2 border-t ${isDarkMode ? "border-gray-700" : "border-gray-200"}`} />
+                ))}
+              <div className="space-y-0.5">
+          {section.items.map((item) => {
+            const isActive = item.expandable ? pathname === item.path : isActivePath(pathname, item.path);
+            // A group opens by itself on one of its pages.
+            const isExpanded = expandedSections[item.label] ?? isActivePath(pathname, item.path);
 
             return (
               <div key={item.path}>
                 <div className="flex items-center">
                   <Link
                     href={item.path}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-200 flex-1 ${
+                    title={isOpen ? undefined : item.label}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors duration-200 flex-1 ${
                       isActive
                         ? isDarkMode
                           ? "bg-blue-900 text-blue-300"
@@ -272,53 +282,11 @@ export default function Sidebar() {
               </div>
             );
           })}
+              </div>
+            </div>
+          ))}
         </nav>
 
-        {/* Theme Toggle */}
-        <div
-          className={`p-3 transition-colors duration-200 ${
-            isDarkMode ? "border-t border-gray-700" : "border-t border-gray-200"
-          }`}
-        >
-          {isOpen ? (
-            <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-200 ${
-                isDarkMode
-                  ? "text-gray-300 hover:bg-gray-800"
-                  : "text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              {isDarkMode ? (
-                <IoMdSunny className="w-5 h-5" />
-              ) : (
-                <IoMdMoon className="w-5 h-5" />
-              )}
-              <span className="font-medium text-sm">
-                {isDarkMode
-                  ? getTranslation("lightMode", language)
-                  : getTranslation("darkMode", language)}
-              </span>
-            </button>
-          ) : (
-            <div className="flex flex-col items-center gap-2">
-              <button
-                onClick={() => setIsDarkMode(!isDarkMode)}
-                className={`w-full flex items-center justify-center px-3 py-2.5 rounded-lg transition-colors duration-200 ${
-                  isDarkMode
-                    ? "text-gray-300 hover:bg-gray-800"
-                    : "text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                {isDarkMode ? (
-                  <IoMdSunny className="w-5 h-5" />
-                ) : (
-                  <IoMdMoon className="w-5 h-5" />
-                )}
-              </button>
-            </div>
-          )}
-        </div>
       </aside>
 
       {/* Toggle Button - Responsive positioning */}

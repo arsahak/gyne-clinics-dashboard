@@ -1,7 +1,9 @@
-import RecordingToggle from "@/component/consultationSettings/RecordingToggle";
+import ConsultationRules from "@/component/consultationSettings/ConsultationRules";
+import { CURRENT_RULES } from "@/lib/sample/consultationRules";
 
-const page = () => {
-  return <RecordingToggle />;
-};
+export const metadata = { title: "Consultation Rules – GyneClinics Admin" };
 
-export default page;
+/** /consultation-settings — timing, booking, prices, video and chat safety rules. */
+export default function ConsultationSettingsPage() {
+  return <ConsultationRules initialRules={CURRENT_RULES} />;
+}

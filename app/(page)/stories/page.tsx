@@ -1,18 +1,17 @@
-import { getStoriesPage } from "@/app/actions/story";
-import StoryManagement from "@/component/storyManagement/StoryManagement";
+import { getStoriesPage } from "@/app/actions/storyAction";
+import StoryList from "@/component/storyManagement/StoryList";
 
 export const dynamic = "force-dynamic";
 
-const StoriesPage = async () => {
-  const response = await getStoriesPage({ status: "pending" });
-
+/** /stories — community stories, opening on all of them (approved included). */
+export default async function StoriesPage() {
+  const response = await getStoriesPage({ status: "all" });
   return (
-    <StoryManagement
+    <StoryList
       initialStories={response.success && response.data ? response.data : []}
       initialPagination={response.pagination}
       initialStats={response.stats}
+      initialStatus="all"
     />
   );
-};
-
-export default StoriesPage;
+}

@@ -1,13 +1,12 @@
-import { ChatMetadataRecord, getChatsMetadata } from "@/app/actions/chatMonitoring";
-import DoctorChatOverview from "@/component/chatMonitoring/DoctorChatOverview";
+import { getChatForStaff, getChatsPage } from "@/app/actions/chatMonitoringAction";
+import ChatMonitor from "@/component/chatMonitoring/ChatMonitor";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Chat Monitoring – GyneClinics Admin" };
 
-const ChatMonitoringPage = async () => {
-  const response = await getChatsMetadata();
-  const chats = (response.success && response.data ? response.data : []) as ChatMetadataRecord[];
-
-  return <DoctorChatOverview chats={chats} />;
-};
-
-export default ChatMonitoringPage;
+/** /chat-monitoring?chat=… — real patient–doctor chats, read only. loading.tsx shows a skeleton meanwhile. */
+export default async function ChatMonitoringPage({ searchParams }: { searchParams: Promise<{ chat?: string }> }) {
+  const { chat } = await searchParams;
+  const [initial, initialChat] = await Promise.all([getChatsPage({ page: 1, limit: 20 }), chat ? getChatForStaff(chat) : Promise.resolve(undefined)]);
+  return <ChatMonitor initial={initial} initialChat={initialChat} initialChatId={chat} now={new Date().toISOString()} />;
+}

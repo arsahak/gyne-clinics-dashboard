@@ -1,19 +1,16 @@
 import { getContentsPage } from "@/app/actions/content";
-import ContentManagement from "@/component/contentManagement/ContentManagement";
+import ContentList from "@/component/contentManagement/ContentList";
 
 export const dynamic = "force-dynamic";
 
-const ContentPage = async () => {
+/** /content — the Learn feed's content. */
+export default async function ContentPage() {
   const response = await getContentsPage();
-
   return (
-    <ContentManagement
+    <ContentList
       initialContents={response.success && response.data ? response.data : []}
       initialPagination={response.pagination}
       initialStats={response.stats}
-      initialCategories={response.categories ?? []}
     />
   );
-};
-
-export default ContentPage;
+}

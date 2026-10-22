@@ -1,5 +1,5 @@
-import { getPatients } from "@/app/actions/adminUserManagement";
-import UserManagement from "@/component/userManagement/UserManagement";
+import { getPatients } from "@/app/actions/patientAction";
+import PatientList from "@/component/patientManagement/PatientList";
 
 export const dynamic = "force-dynamic";
 
@@ -7,7 +7,7 @@ const UserManagementPage = async () => {
   const response = await getPatients();
 
   return (
-    <UserManagement
+    <PatientList
       initialPatients={response.success && response.data ? response.data : []}
       initialPagination={response.pagination}
       initialStats={response.stats}

@@ -37,6 +37,7 @@ declare module "next-auth" {
     emailVerified?: Date | null;
     accessToken: string;
     tokenIssuedAt: number;
+    accessTokenExpires?: number;
   }
 }
 
@@ -52,6 +53,7 @@ declare module "next-auth/jwt" {
     isEmailVerified: boolean;
     accessToken: string | null;
     tokenIssuedAt: number;
+    accessTokenExpires?: number;
     error?: string;
   }
 }

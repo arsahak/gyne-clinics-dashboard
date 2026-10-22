@@ -30,3 +30,36 @@ body {
   margin: 0;
   padding: 0;
 }
+
+/* Sidebar menu: a thin, always-visible scrollbar (so people see the menu scrolls). */
+.sidebar-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.sidebar-scroll::-webkit-scrollbar-track,
+.sidebar-scroll::-webkit-scrollbar-corner {
+  background: transparent;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgb(0 0 0 / 0.18);
+  border-radius: 9999px;
+}
+.sidebar-scroll:hover::-webkit-scrollbar-thumb {
+  background: rgb(0 0 0 / 0.3);
+}
+.sidebar-scroll.sidebar-scroll-dark::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 0.2);
+}
+.sidebar-scroll.sidebar-scroll-dark:hover::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 0.32);
+}
+/* Firefox has no ::-webkit-scrollbar; its thinnest native bar instead.
+   (Setting these in Chrome would replace the 4px style above.) */
+@supports not selector(::-webkit-scrollbar) {
+  .sidebar-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(0 0 0 / 0.18) transparent;
+  }
+  .sidebar-scroll.sidebar-scroll-dark {
+    scrollbar-color: rgb(255 255 255 / 0.2) transparent;
+  }
+}

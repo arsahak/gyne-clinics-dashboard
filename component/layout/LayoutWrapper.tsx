@@ -4,8 +4,12 @@ import Sidebar from "@/component/layout/Sidebar";
 import Topbar from "@/component/layout/Topbar";
 import { LanguageProvider } from "@/lib/LanguageContext";
 import { SidebarProvider, useSidebar } from "@/lib/SidebarContext";
+import type { AccessLevel, AreaKey } from "@/lib/access";
 
-function LayoutContent({ children }: { children: React.ReactNode }) {
+/** Area → level for the signed-in user; null = unknown (show everything, the backend decides). */
+export type Access = Partial<Record<AreaKey, AccessLevel>> | null;
+
+function LayoutContent({ children, access }: { children: React.ReactNode; access: Access }) {
   const { isOpen, isMobile, isDarkMode } = useSidebar();
 
   return (
@@ -16,12 +20,12 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
     >
       {/* Sidebar - Fixed positioning */}
       <div>
-        <Sidebar />
+        <Sidebar access={access} />
       </div>
 
       {/* Topbar - Fixed positioning */}
       <div>
-        <Topbar />
+        <Topbar access={access} />
       </div>
 
       {/* Main content with proper spacing for fixed sidebar and topbar */}
@@ -44,13 +48,15 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
 export default function LayoutWrapper({
   children,
+  access = null,
 }: {
   children: React.ReactNode;
+  access?: Access;
 }) {
   return (
     <LanguageProvider>
       <SidebarProvider>
-        <LayoutContent>{children}</LayoutContent>
+        <LayoutContent access={access}>{children}</LayoutContent>
       </SidebarProvider>
     </LanguageProvider>
   );

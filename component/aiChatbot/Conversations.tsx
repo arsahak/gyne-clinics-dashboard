@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import TablePagination from "@/component/shared/TablePagination";
+import { usePagedList } from "@/component/shared/usePagedList";
 import { useSidebar } from "@/lib/SidebarContext";
 import {
   MessageSquare,
@@ -141,6 +143,7 @@ ${msg.sources && msg.sources.length > 0 ? `Sources: ${msg.sources.join(", ")}` :
       conv.messages.some((msg) => msg.text.toLowerCase().includes(query))
     );
   });
+  const paged = usePagedList(filteredConversations, 10, `${selectedType}|${searchQuery}`);
 
   const chatbotTypes = [
     { value: "all", label: "All Types" },
@@ -293,7 +296,7 @@ ${msg.sources && msg.sources.length > 0 ? `Sources: ${msg.sources.join(", ")}` :
             </div>
           ) : (
             <div className="space-y-3">
-              {filteredConversations.map((conversation) => (
+              {paged.items.map((conversation) => (
                 <div
                   key={conversation._id}
                   className={`border rounded-lg p-4 transition-colors ${
@@ -348,7 +351,7 @@ ${msg.sources && msg.sources.length > 0 ? `Sources: ${msg.sources.join(", ")}` :
                         <p className={`text-sm italic line-clamp-2 ${
                           isDarkMode ? "text-gray-400" : "text-gray-600"
                         }`}>
-                          "{conversation.messages.find((m) => m.sender === "user")?.text}"
+                          &ldquo;{conversation.messages.find((m) => m.sender === "user")?.text}&rdquo;
                         </p>
                       )}
                     </div>
@@ -383,6 +386,7 @@ ${msg.sources && msg.sources.length > 0 ? `Sources: ${msg.sources.join(", ")}` :
                   </div>
                 </div>
               ))}
+              <TablePagination {...paged} itemLabel="conversations" isDarkMode={isDarkMode} onPageChange={paged.setPage} />
             </div>
           )}
         </div>

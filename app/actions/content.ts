@@ -1,29 +1,64 @@
 "use server";
 
 import { auth } from "@/auth";
+import { revalidatePath } from "next/cache";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+// Learn-feed content against the Gyneclinics backend (/api/v1/content).
+// Shown in the webapp's Learn page; formats and categories match the webapp.
+
+/** The webapp's Learn categories (list in component/contentManagement/contentMeta.ts). */
+export type ContentCategory = "Periods" | "Fertility" | "Pregnancy" | "Menopause" | "Pelvic Health" | "Wellness" | "Stories";
 
 export interface Content {
   _id: string;
+  /** URL name in the webapp: /patient/learn/<slug>. */
+  slug: string;
   title: string;
+  /** Cleaned HTML. Not included in list results. */
   body: string;
-  format: "text" | "image" | "blog";
+  /** Summary on feed cards and at the top of the article. */
+  excerpt?: string;
+  /** The summary is taken from the start of the body (not written by hand). */
+  excerptEstimated?: boolean;
+  /** guide = article. */
+  format: "guide" | "blog" | "story" | "image";
   imageUrl?: string;
-  category: string;
+  category: ContentCategory;
+  /** Byline shown to patients. */
+  authorName?: string;
+  authorRole?: string;
   readTimeMinutes?: number;
+  /** Read time is estimated from the body (not set by hand). */
+  readTimeEstimated?: boolean;
   visibility: "published" | "draft" | "hidden";
-  author: string;
   sponsored?: boolean;
   sponsorName?: string;
+  publishedAt?: string;
+  author?: { _id: string; fullName?: string };
+  updatedBy?: { _id: string; fullName?: string };
   createdAt?: string;
   updatedAt?: string;
 }
 
+/** Fields sent on create / update. `readTimeMinutes: null` = estimate it. */
+export type ContentInput = Partial<
+  Pick<
+    Content,
+    "title" | "body" | "format" | "imageUrl" | "category" | "visibility" | "sponsored" | "sponsorName" | "authorName" | "authorRole"
+  >
+> & {
+  /** null = estimate it from the body. */
+  readTimeMinutes?: number | null;
+  /** Empty = take it from the start of the body. */
+  excerpt?: string;
+};
+
 export interface ContentResponse {
   success: boolean;
   message?: string;
-  data?: Content | Content[];
+  data?: Content;
   error?: string;
 }
 
@@ -42,6 +77,7 @@ export interface ContentStats {
   published: number;
   draft: number;
   hidden: number;
+  sponsored?: number;
 }
 
 export interface ContentPageResponse {
@@ -53,273 +89,104 @@ export interface ContentPageResponse {
   error?: string;
 }
 
-export interface ModerationLog {
-  _id: string;
-  moderator: { _id: string; name?: string };
-  targetType: "content" | "story";
-  targetId: string;
-  action: "create" | "edit" | "hide" | "unhide" | "delete" | "approve" | "reject";
-  reason?: string;
-  createdAt: string;
-}
-
-export interface ModerationLogResponse {
-  success: boolean;
-  data?: ModerationLog[];
-  error?: string;
-}
-
 async function getAuthHeaders(): Promise<HeadersInit> {
   const session = await auth();
   const token = session?.accessToken;
-
   return {
     "Content-Type": "application/json",
     ...(token && { Authorization: `Bearer ${token}` }),
   };
 }
 
-async function parseResponse(response: Response): Promise<any> {
-  const contentType = response.headers.get("content-type");
-  if (contentType && contentType.includes("application/json")) {
-    try {
-      return await response.json();
-    } catch (e) {
-      console.error(`JSON Parse Error for ${response.url}.`);
-      throw new Error(`Invalid JSON response from server (Status ${response.status})`);
-    }
-  } else {
-    const text = await response.text();
-    console.error(`Non-JSON response from ${response.url}:`, text.substring(0, 200));
-    throw new Error(`Server returned non-JSON response (Status ${response.status})`);
+/** Error text for a failed backend response. */
+function errorFor(status: number, data: { errors?: string[]; message?: string } | null, fallback: string) {
+  // The backend token lasts JWT_EXPIRES_IN; after that every call is 401.
+  if (status === 401) return "Your session has expired. Please sign out and sign in again.";
+  if (status === 403) return data?.message || "You don't have permission to manage content.";
+  return data?.errors?.[0] || data?.message || fallback;
+}
+
+async function request<T>(path: string, init: RequestInit, fallback: string) {
+  try {
+    const response = await fetch(`${API_URL}/api/v1/content${path}`, {
+      ...init,
+      headers: await getAuthHeaders(),
+      cache: "no-store",
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok) return { ok: false as const, error: errorFor(response.status, data, fallback) };
+    return { ok: true as const, data: data?.data as T, message: data?.message as string | undefined };
+  } catch {
+    return { ok: false as const, error: "Can't reach the server. Please try again." };
   }
 }
 
-// Paginated admin table: search, category/status filters, sort, plus global stats and category list.
-export async function getContentsPage(options: {
-  category?: string;
-  status?: ContentStatusFilter;
-  search?: string;
-  sort?: ContentSort;
-  page?: number;
-  limit?: number;
-} = {}): Promise<ContentPageResponse> {
-  try {
-    const headers = await getAuthHeaders();
-    const params = new URLSearchParams({
-      all: "true",
-      page: String(options.page ?? 1),
-      limit: String(options.limit ?? 10),
-      sort: options.sort ?? "newest",
-      status: options.status ?? "all",
-    });
-    if (options.category) params.set("category", options.category);
-    if (options.search) params.set("search", options.search);
+/** Refreshes the cached content pages after a change. */
+const refreshContentPages = () => revalidatePath("/content", "layout");
 
-    const response = await fetch(`${API_URL}/api/content?${params}`, {
-      method: "GET",
-      headers,
-      cache: "no-store",
-    });
-    const data = await parseResponse(response);
-    if (!response.ok) return { success: false, error: data.message || "Failed to fetch content" };
-    return {
-      success: true,
-      data: data.data,
-      pagination: data.pagination,
-      stats: data.stats,
-      categories: data.categories,
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "An error occurred while fetching content",
-    };
-  }
-}
+// ── Reads ───────────────────────────────────────────────────────────────────
 
-// Get all content (admin sees every visibility state; pass category to filter)
-export async function getContents(category?: string): Promise<ContentResponse> {
-  try {
-    const headers = await getAuthHeaders();
+/** One page of the staff list, with counts and the category list. */
+export async function getContentsPage(
+  options: {
+    category?: string;
+    status?: ContentStatusFilter;
+    search?: string;
+    sort?: ContentSort;
+    page?: number;
+    limit?: number;
+  } = {},
+): Promise<ContentPageResponse> {
+  const params = new URLSearchParams({
+    page: String(options.page ?? 1),
+    limit: String(options.limit ?? 10),
+    sort: options.sort ?? "newest",
+    status: options.status ?? "all",
+  });
+  if (options.category) params.set("category", options.category);
+  if (options.search) params.set("search", options.search);
 
-    const params = new URLSearchParams({ all: "true" });
-    if (category) params.set("category", category);
-
-    const response = await fetch(`${API_URL}/api/content?${params}`, {
-      method: "GET",
-      headers,
-      cache: "no-store",
-    });
-
-    const data = await parseResponse(response);
-
-    if (!response.ok) {
-      return { success: false, error: data.message || "Failed to fetch content" };
-    }
-
-    return { success: true, data: data.data };
-  } catch (error: any) {
-    console.error("Get contents error:", error);
-    return { success: false, error: error.message || "An error occurred while fetching content" };
-  }
+  const result = await request<{
+    contents: Content[];
+    pagination: ContentPagination;
+    stats: ContentStats;
+    categories: string[];
+  }>(`?${params}`, { method: "GET" }, "Failed to fetch content");
+  if (!result.ok) return { success: false, error: result.error };
+  return {
+    success: true,
+    data: result.data.contents,
+    pagination: result.data.pagination,
+    stats: result.data.stats,
+    categories: result.data.categories,
+  };
 }
 
 export async function getContentById(id: string): Promise<ContentResponse> {
-  try {
-    const headers = await getAuthHeaders();
-
-    const response = await fetch(`${API_URL}/api/content/${id}`, {
-      method: "GET",
-      headers,
-      cache: "no-store",
-    });
-
-    const data = await parseResponse(response);
-
-    if (!response.ok) {
-      return { success: false, error: data.message || "Failed to fetch content" };
-    }
-
-    return { success: true, data: data.data };
-  } catch (error: any) {
-    console.error("Get content by ID error:", error);
-    return { success: false, error: error.message || "An error occurred while fetching content" };
-  }
+  const result = await request<Content>(`/${id}`, { method: "GET" }, "Failed to fetch content");
+  return result.ok ? { success: true, data: result.data } : { success: false, error: result.error };
 }
 
-export async function createContent(payload: Partial<Content>): Promise<ContentResponse> {
-  try {
-    const headers = await getAuthHeaders();
+// ── Changes ─────────────────────────────────────────────────────────────────
 
-    const response = await fetch(`${API_URL}/api/content`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(payload),
-    });
-
-    const data = await parseResponse(response);
-
-    if (!response.ok) {
-      return { success: false, error: data.message || "Failed to create content" };
-    }
-
-    return { success: true, message: data.message || "Content created successfully", data: data.data };
-  } catch (error: any) {
-    console.error("Create content error:", error);
-    return { success: false, error: error.message || "An error occurred while creating content" };
-  }
+export async function createContent(input: ContentInput): Promise<ContentResponse> {
+  const result = await request<Content>("", { method: "POST", body: JSON.stringify(input) }, "Failed to create content");
+  if (!result.ok) return { success: false, error: result.error };
+  refreshContentPages();
+  return { success: true, message: result.message, data: result.data };
 }
 
-export async function updateContent(id: string, payload: Partial<Content>): Promise<ContentResponse> {
-  try {
-    const headers = await getAuthHeaders();
-
-    const response = await fetch(`${API_URL}/api/content/${id}`, {
-      method: "PUT",
-      headers,
-      body: JSON.stringify(payload),
-    });
-
-    const data = await parseResponse(response);
-
-    if (!response.ok) {
-      return { success: false, error: data.message || "Failed to update content" };
-    }
-
-    return { success: true, message: data.message || "Content updated successfully", data: data.data };
-  } catch (error: any) {
-    console.error("Update content error:", error);
-    return { success: false, error: error.message || "An error occurred while updating content" };
-  }
-}
-
-export async function hideContent(id: string, reason?: string): Promise<ContentResponse> {
-  try {
-    const headers = await getAuthHeaders();
-
-    const response = await fetch(`${API_URL}/api/content/${id}/hide`, {
-      method: "PATCH",
-      headers,
-      body: JSON.stringify({ reason }),
-    });
-
-    const data = await parseResponse(response);
-
-    if (!response.ok) {
-      return { success: false, error: data.message || "Failed to hide content" };
-    }
-
-    return { success: true, message: data.message, data: data.data };
-  } catch (error: any) {
-    console.error("Hide content error:", error);
-    return { success: false, error: error.message || "An error occurred while hiding content" };
-  }
-}
-
-export async function unhideContent(id: string): Promise<ContentResponse> {
-  try {
-    const headers = await getAuthHeaders();
-
-    const response = await fetch(`${API_URL}/api/content/${id}/unhide`, {
-      method: "PATCH",
-      headers,
-    });
-
-    const data = await parseResponse(response);
-
-    if (!response.ok) {
-      return { success: false, error: data.message || "Failed to restore content" };
-    }
-
-    return { success: true, message: data.message, data: data.data };
-  } catch (error: any) {
-    console.error("Unhide content error:", error);
-    return { success: false, error: error.message || "An error occurred while restoring content" };
-  }
+/** Send only what changes. */
+export async function updateContent(id: string, input: ContentInput): Promise<ContentResponse> {
+  const result = await request<Content>(`/${id}`, { method: "PATCH", body: JSON.stringify(input) }, "Failed to update content");
+  if (!result.ok) return { success: false, error: result.error };
+  refreshContentPages();
+  return { success: true, message: result.message, data: result.data };
 }
 
 export async function deleteContent(id: string): Promise<ContentResponse> {
-  try {
-    const headers = await getAuthHeaders();
-
-    const response = await fetch(`${API_URL}/api/content/${id}`, {
-      method: "DELETE",
-      headers,
-    });
-
-    const data = await parseResponse(response);
-
-    if (!response.ok) {
-      return { success: false, error: data.message || "Failed to delete content" };
-    }
-
-    return { success: true, message: data.message || "Content deleted successfully" };
-  } catch (error: any) {
-    console.error("Delete content error:", error);
-    return { success: false, error: error.message || "An error occurred while deleting content" };
-  }
-}
-
-export async function getModerationLogs(): Promise<ModerationLogResponse> {
-  try {
-    const headers = await getAuthHeaders();
-
-    const response = await fetch(`${API_URL}/api/content/moderation-logs`, {
-      method: "GET",
-      headers,
-      cache: "no-store",
-    });
-
-    const data = await parseResponse(response);
-
-    if (!response.ok) {
-      return { success: false, error: data.message || "Failed to fetch moderation logs" };
-    }
-
-    return { success: true, data: data.data };
-  } catch (error: any) {
-    console.error("Get moderation logs error:", error);
-    return { success: false, error: error.message || "An error occurred while fetching moderation logs" };
-  }
+  const result = await request<null>(`/${id}`, { method: "DELETE" }, "Failed to delete content");
+  if (!result.ok) return { success: false, error: result.error };
+  refreshContentPages();
+  return { success: true, message: result.message };
 }

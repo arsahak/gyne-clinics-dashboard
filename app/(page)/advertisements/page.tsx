@@ -1,18 +1,16 @@
-import { getAdvertisementsPage } from "@/app/actions/advertisementManagement";
-import AdvertisementManagement from "@/component/advertisementManagement/AdvertisementManagement";
+import { getAdvertisementsPage } from "@/app/actions/advertisementAction";
+import AdvertisementList from "@/component/advertisementManagement/AdvertisementList";
 
 export const dynamic = "force-dynamic";
 
-const AdvertisementsPage = async () => {
+/** /advertisements — ads shown in the app. */
+export default async function AdvertisementsPage() {
   const response = await getAdvertisementsPage();
-
   return (
-    <AdvertisementManagement
+    <AdvertisementList
       initialAds={response.success && response.data ? response.data : []}
       initialPagination={response.pagination}
       initialStats={response.stats}
     />
   );
-};
-
-export default AdvertisementsPage;
+}

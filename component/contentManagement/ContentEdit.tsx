@@ -1,41 +1,41 @@
 "use client";
-import { Content, updateContent } from "@/app/actions/content";
+import { type Content, updateContent } from "@/app/actions/content";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import toast from "react-hot-toast";
-import ContentForm, { ContentFormData } from "./ContentForm";
+import ContentForm, { type ContentFormData } from "./ContentForm";
 
-interface ContentEditProps {
-  content: Content;
-  existingCategories: string[];
+/** Content (as fetched) → form values. */
+function toFormData(content: Content): ContentFormData {
+  return {
+    title: content.title,
+    body: content.body,
+    // Summaries taken from the text stay empty, so they keep following it.
+    excerpt: content.excerptEstimated ? "" : (content.excerpt ?? ""),
+    format: content.format,
+    imageUrl: content.imageUrl ?? "",
+    category: content.category,
+    // Estimated read times stay empty, so they keep following the text.
+    readTimeMinutes: content.readTimeEstimated ? undefined : content.readTimeMinutes,
+    visibility: content.visibility,
+    authorName: content.authorName ?? "",
+    authorRole: content.authorRole ?? "",
+    sponsored: content.sponsored ?? false,
+    sponsorName: content.sponsorName ?? "",
+  };
 }
 
-const ContentEdit = ({ content, existingCategories }: ContentEditProps) => {
+const ContentEdit = ({ content }: { content: Content }) => {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const initialData: ContentFormData = {
-    title: content.title,
-    body: content.body,
-    format: content.format,
-    imageUrl: content.imageUrl || "",
-    category: content.category,
-    readTimeMinutes: content.readTimeMinutes,
-    visibility: content.visibility,
-    sponsored: content.sponsored ?? false,
-    sponsorName: content.sponsorName || "",
-  };
-
   const handleSubmit = async (data: ContentFormData) => {
     setIsSubmitting(true);
-
     try {
       const response = await updateContent(content._id, data);
-
       if (response.success) {
         toast.success("Content updated successfully!");
-        router.push("/content");
-        router.refresh();
+        router.push(`/content/${content._id}`);
       } else {
         toast.error(response.error || "Failed to update content");
       }
@@ -50,10 +50,12 @@ const ContentEdit = ({ content, existingCategories }: ContentEditProps) => {
   return (
     <ContentForm
       title="Edit Content"
-      initialData={initialData}
+      description={`Update “${content.title}”.`}
+      submitLabel="Save Changes"
+      initialData={toFormData(content)}
+      cancelHref={`/content/${content._id}`}
       onSubmit={handleSubmit}
       isSubmitting={isSubmitting}
-      existingCategories={existingCategories}
     />
   );
 };

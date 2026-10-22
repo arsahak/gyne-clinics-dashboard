@@ -1,13 +1,11 @@
-import { getReportedChats, ReportedChat } from "@/app/actions/chatModeration";
-import ChatModeration from "@/component/chatModeration/ChatModeration";
+import { getFlagsPage } from "@/app/actions/moderationAction";
+import ModerationQueue from "@/component/chatModeration/ModerationQueue";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Chat Moderation – GyneClinics Admin" };
 
-const ChatModerationPage = async () => {
-  const response = await getReportedChats();
-  const initialReports = (response.success && response.data ? response.data : []) as ReportedChat[];
-
-  return <ChatModeration initialReports={initialReports} />;
-};
-
-export default ChatModerationPage;
+/** /chat-moderation — what the chat safety filter caught, from the backend. loading.tsx shows a skeleton meanwhile. */
+export default async function ChatModerationPage() {
+  const initial = await getFlagsPage({ status: "new", page: 1, limit: 8 });
+  return <ModerationQueue initial={initial} now={new Date().toISOString()} />;
+}
