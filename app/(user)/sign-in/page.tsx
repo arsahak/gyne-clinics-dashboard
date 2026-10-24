@@ -1,3 +1,4 @@
+import DashboardBackdrop from "@/component/auth/DashboardBackdrop";
 import SigninPage from "@/component/auth/SigninPage";
 import { Suspense } from "react";
 
@@ -18,9 +19,13 @@ export const metadata = {
 
 const page = () => {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <SigninPage />
-    </Suspense>
+    <>
+      {/* Blurred dashboard preview (sample data) behind the sign-in card */}
+      <DashboardBackdrop />
+      <Suspense fallback={<div>Loading...</div>}>
+        <SigninPage />
+      </Suspense>
+    </>
   );
 };
 
